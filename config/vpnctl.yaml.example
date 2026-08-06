@@ -1,0 +1,46 @@
+# Copy to /etc/vpnctl/config.yaml (or set VPNCTL_CONFIG).
+# Defaults match current angristan/openvpn-install layout.
+
+paths:
+  openvpn_server_dir: /etc/openvpn/server
+  easy_rsa_dir: /etc/openvpn/server/easy-rsa
+  server_conf: /etc/openvpn/server/server.conf
+  client_template: /etc/openvpn/server/client-template.txt
+  status_log: /var/log/openvpn/status.log
+  crl_publish: /etc/openvpn/server/crl.pem
+  client_output_dir: /var/lib/vpnctl/clients
+  catalog_db: /var/lib/vpnctl/catalog.db
+
+# Management interface: unix socket (angristan default) or TCP.
+openvpn_management:
+  # socket: /var/run/openvpn-server/server.sock
+  # host: 127.0.0.1
+  # port: 7505
+  timeout_seconds: 15
+
+api:
+  host: 127.0.0.1
+  port: 8080
+  # Generate with: openssl rand -hex 32
+  token: change-me
+
+# Optional: remind when certs expire within N days (UI + /api/v1/expiry).
+expiry:
+  warn_days: 30
+
+# Optional delivery of .ovpn after issue.
+mail:
+  enabled: false
+  smtp_host: localhost
+  smtp_port: 25
+  smtp_user: ""
+  smtp_password: ""
+  use_tls: false
+  from_addr: vpnctl@example.com
+  subject: "Your OpenVPN profile"
+
+telegram:
+  enabled: false
+  bot_token: ""
+  # Default chat; can override per client via catalog.
+  chat_id: ""

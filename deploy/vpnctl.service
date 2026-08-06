@@ -1,0 +1,17 @@
+[Unit]
+Description=vpnctl OpenVPN management API
+After=network.target openvpn-server@server.service
+Wants=openvpn-server@server.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+Environment=VPNCTL_CONFIG=/etc/vpnctl/config.yaml
+ExecStart=/usr/local/bin/vpnctl serve --config /etc/vpnctl/config.yaml
+Restart=on-failure
+RestartSec=3
+# Bind stays on 127.0.0.1 by default; put a reverse proxy in front if needed.
+
+[Install]
+WantedBy=multi-user.target
