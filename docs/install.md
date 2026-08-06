@@ -44,6 +44,36 @@ sudo systemctl enable --now vpnctl
 
 Paste the token into the UI header once; it is stored in browser `localStorage`.
 
+### Listen beyond localhost (VPN / LAN / testing)
+
+By default vpnctl binds `127.0.0.1`, so even OpenVPN clients cannot open the UI.
+To administer after connecting to VPN (recommended production pattern):
+
+```yaml
+api:
+  host: 0.0.0.0          # or the tunnel IP, e.g. 10.8.0.1
+  port: 8080
+  allow_from_vpn: true   # allow clients from OpenVPN `server` pool
+  allow_from:
+    - 127.0.0.1/32
+```
+
+Then open `http://10.8.0.1:8080/` (server VPN IP) while connected as a client.
+
+For quick testing from the public IP (token-only, no IP filter):
+
+```yaml
+api:
+  host: 0.0.0.0
+  allow_from: []
+  allow_from_vpn: false
+```
+
+Prefer firewall rules as well (`ufw allow from 10.8.0.0/24 to any port 8080`).  
+Do not expose an unauthenticated admin UI; keep a strong `api.token`. For internet exposure, put TLS reverse proxy in front.
+
+Restart after config changes: `sudo systemctl restart vpnctl`.
+
 ### Optional mail delivery
 
 ```yaml
@@ -68,7 +98,7 @@ telegram:
 
 ## Reverse proxy (optional)
 
-Keep vpnctl on `127.0.0.1:8080` and terminate TLS on nginx/caddy. Protect the UI with your own auth or keep it admin-only via VPN/SSH tunnel.
+Either keep vpnctl on loopback and terminate TLS on nginx/caddy, or bind `0.0.0.0` with `allow_from_vpn: true` and proxy only if you need a public hostname.
 
 ## Verify
 

@@ -27,9 +27,14 @@ def default_config() -> dict[str, Any]:
             "timeout_seconds": 15,
         },
         "api": {
+            # 127.0.0.1 = local only; 0.0.0.0 = all interfaces; or a specific IP.
             "host": "127.0.0.1",
             "port": 8080,
             "token": "change-me",
+            # Extra CIDRs allowed to reach the UI/API (empty = no IP filter).
+            "allow_from": [],
+            # If true, also allow the OpenVPN client pool from server.conf (`server ...`).
+            "allow_from_vpn": False,
         },
         "expiry": {
             "warn_days": 30,

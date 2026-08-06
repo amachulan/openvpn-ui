@@ -13,6 +13,7 @@ from pathlib import Path
 def _cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
+    from vpnctl.access import is_loopback_bind, resolve_allow_networks
     from vpnctl.config import load_config
 
     if args.config:
@@ -21,6 +22,18 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     api = cfg.get("api") or {}
     host = args.host or str(api.get("host") or "127.0.0.1")
     port = int(args.port or api.get("port") or 8080)
+    allow = resolve_allow_networks(cfg)
+    if not is_loopback_bind(host) and not allow:
+        print(
+            "WARNING: api.host is not loopback and allow_from/allow_from_vpn "
+            "are empty — UI/API is reachable from any client IP (token still required).",
+            file=sys.stderr,
+        )
+    elif not is_loopback_bind(host):
+        print(
+            f"Listening on {host}:{port}; allow_from={', '.join(str(n) for n in allow)}",
+            file=sys.stderr,
+        )
     uvicorn.run(
         "vpnctl.api.app:create_app",
         host=host,

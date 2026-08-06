@@ -5,12 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from vpnctl import __version__
+from vpnctl.access import client_ip_allowed, extract_client_ip, resolve_allow_networks
 from vpnctl.api.auth import require_token
 from vpnctl.config import load_config
 from vpnctl.management import ManagementError, SessionNotFoundError
@@ -19,6 +21,24 @@ from vpnctl.pki import PkiError
 from vpnctl.service import VpnctlService
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+
+
+class AllowFromMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: Any, networks: list[Any]) -> None:
+        super().__init__(app)
+        self.networks = networks
+
+    async def dispatch(self, request: Request, call_next: Any) -> Any:
+        if not self.networks:
+            return await call_next(request)
+        client_host = request.client.host if request.client else ""
+        ip = extract_client_ip(dict(request.headers), client_host)
+        if not client_ip_allowed(ip, self.networks):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": f"client IP not allowed: {ip or 'unknown'}"},
+            )
+        return await call_next(request)
 
 
 class IssueBody(BaseModel):
@@ -55,12 +75,15 @@ def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
     cfg = cfg or load_config()
     service = VpnctlService(cfg)
     auth = require_token(cfg)
+    allow_networks = resolve_allow_networks(cfg)
 
     app = FastAPI(
         title="vpnctl",
         version=__version__,
         description="Web UI/API for OpenVPN Community (angristan-compatible)",
     )
+    if allow_networks:
+        app.add_middleware(AllowFromMiddleware, networks=allow_networks)
 
     @app.get("/api/v1/health")
     def health() -> dict[str, Any]:

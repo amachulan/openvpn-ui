@@ -40,6 +40,8 @@ VPNCTL_CONFIG=./config/vpnctl.yaml.example vpnctl serve --host 127.0.0.1 --port 
 
 Copy and edit the example config before real use; set a strong `api.token`.
 
+Default bind is `127.0.0.1`. To reach the UI over OpenVPN / LAN, set `api.host: 0.0.0.0` and preferably `api.allow_from_vpn: true` (see [docs/install.md](docs/install.md)).
+
 ## API (auth required except health)
 
 | Method | Path | Description |

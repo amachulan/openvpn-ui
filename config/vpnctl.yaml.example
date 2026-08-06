@@ -19,10 +19,26 @@ openvpn_management:
   timeout_seconds: 15
 
 api:
+  # Bind address:
+  #   127.0.0.1  — local only (default, safest)
+  #   0.0.0.0    — all interfaces (needed to reach UI over VPN / LAN / public IP)
+  #   10.8.0.1   — specific address (e.g. OpenVPN tunnel IP only)
   host: 127.0.0.1
   port: 8080
   # Generate with: openssl rand -hex 32
   token: change-me
+
+  # IP allowlist (recommended when host is not loopback).
+  # Empty list = no IP filter (anyone who can reach the port; token still required).
+  allow_from: []
+  # true = also allow the OpenVPN client pool from server.conf (`server 10.8.0.0 255.255.255.0`)
+  allow_from_vpn: false
+
+  # Example: admin only from VPN clients + localhost
+  # host: 0.0.0.0
+  # allow_from_vpn: true
+  # allow_from:
+  #   - 127.0.0.1/32
 
 # Optional: remind when certs expire within N days (UI + /api/v1/expiry).
 expiry:

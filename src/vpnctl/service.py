@@ -7,6 +7,7 @@ from typing import Any
 
 from . import pki
 from .catalog import Catalog
+from .access import is_loopback_bind, resolve_allow_networks
 from .config import (
     load_config,
     path_from_cfg,
@@ -32,6 +33,9 @@ class VpnctlService:
         idx = pki.index_path(easy)
         status_path = resolve_status_log_path(self.cfg)
         mgmt = resolve_management(self.cfg)
+        api = self.cfg.get("api") or {}
+        host = str(api.get("host") or "127.0.0.1")
+        allow_nets = [str(n) for n in resolve_allow_networks(self.cfg)]
         return {
             "ok": True,
             "version": "0.1.0",
@@ -40,6 +44,13 @@ class VpnctlService:
             "index_txt": idx.is_file(),
             "status_log": str(status_path),
             "status_log_exists": status_path.is_file(),
+            "api": {
+                "host": host,
+                "port": int(api.get("port") or 8080),
+                "loopback_only": is_loopback_bind(host),
+                "allow_from": allow_nets,
+                "allow_from_vpn": bool(api.get("allow_from_vpn")),
+            },
             "management": {
                 "mode": mgmt.get("mode"),
                 "path": mgmt.get("path"),
