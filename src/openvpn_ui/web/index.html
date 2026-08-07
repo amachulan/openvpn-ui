@@ -40,7 +40,7 @@
 
   <nav class="tabs" role="tablist">
     <button type="button" class="tab active" data-tab="clients" data-i18n="tab_clients">Clients</button>
-    <button type="button" class="tab" data-tab="issue" data-i18n="tab_issue">Issue</button>
+    <button type="button" class="tab" data-tab="issue" data-i18n="tab_issue">New client</button>
     <button type="button" class="tab" data-tab="sessions" data-i18n="tab_sessions">Sessions</button>
     <button type="button" class="tab" data-tab="server" data-i18n="tab_server">Server</button>
     <button type="button" class="tab" data-tab="audit" data-i18n="tab_audit">Audit</button>
@@ -74,7 +74,7 @@
     </section>
 
     <section id="panel-issue" class="panel">
-      <div class="panel-head"><h2 data-i18n="issue_title">Issue client</h2></div>
+      <div class="panel-head"><h2 data-i18n="issue_title">Create client profile</h2></div>
       <form id="issue-form" class="form">
         <label><span data-i18n="form_cn">Client name</span> <input name="cn" required pattern="[A-Za-z0-9_-]{1,64}" /></label>
         <label><span data-i18n="form_days">Validity (days)</span> <input name="days" type="number" value="3650" min="1" /></label>
@@ -84,7 +84,7 @@
         <label><span data-i18n="form_telegram">Telegram chat id</span> <input name="telegram_chat_id" /></label>
         <label class="check"><input name="deliver_email" type="checkbox" /> <span data-i18n="form_deliver_email">Email .ovpn after issue</span></label>
         <label class="check"><input name="deliver_telegram" type="checkbox" /> <span data-i18n="form_deliver_telegram">Telegram .ovpn after issue</span></label>
-        <button type="submit" data-i18n="form_issue">Issue</button>
+        <button type="submit" data-i18n="form_issue">Create</button>
       </form>
     </section>
 
