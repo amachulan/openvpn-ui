@@ -5,12 +5,11 @@ set -euo pipefail
 REPO_URL="${VPNCTL_REPO_URL:-https://github.com/amachulan/vpnctl.git}"
 INSTALL_DIR="${VPNCTL_INSTALL_DIR:-/opt/vpnctl}"
 PYTHON="${VPNCTL_PYTHON:-python3}"
-# Nested pip (build isolation) only sees the env var, not --default-timeout.
 export PIP_DEFAULT_TIMEOUT="${PIP_DEFAULT_TIMEOUT:-60}"
 PIP_INDEX="${VPNCTL_PIP_INDEX:-}"
 UPGRADE_PIP="${VPNCTL_UPGRADE_PIP:-0}"
+INSTALL_SH_REV="2026-08-07c"
 
-# Prefer a reachable index: pypi.org is often blocked/slow on VPS.
 PIP_MIRRORS=(
   "https://pypi.org/simple"
   "https://pypi.tuna.tsinghua.edu.cn/simple"
@@ -34,10 +33,25 @@ if [[ ! -d /etc/openvpn/server/easy-rsa ]]; then
   exit 1
 fi
 
+# When launched via `curl | bash`, refresh the repo then re-exec the local script
+# so CDN/cache cannot keep running a stale installer.
+if [[ "${1:-}" != "--from-local" ]]; then
+  apt-get update -y
+  apt-get install -y git curl
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    git -C "${INSTALL_DIR}" pull --ff-only
+  else
+    git clone "${REPO_URL}" "${INSTALL_DIR}"
+  fi
+  echo "Re-exec local installer: ${INSTALL_DIR}/scripts/install.sh (${INSTALL_SH_REV} bootstrap)"
+  exec bash "${INSTALL_DIR}/scripts/install.sh" --from-local
+fi
+
+echo "vpnctl install.sh rev ${INSTALL_SH_REV}"
+
 pick_pip_index() {
   if [[ -n "${PIP_INDEX}" ]]; then
     echo "Using VPNCTL_PIP_INDEX=${PIP_INDEX}"
-    export PIP_INDEX_URL="${PIP_INDEX}"
     return 0
   fi
   local url
@@ -45,7 +59,6 @@ pick_pip_index() {
     echo "Probing PyPI index: ${url}"
     if curl -fsSL --connect-timeout 5 --max-time 15 "${url}/pip/" >/dev/null 2>&1; then
       PIP_INDEX="${url}"
-      export PIP_INDEX_URL="${url}"
       echo "Selected pip index: ${PIP_INDEX}"
       return 0
     fi
@@ -53,41 +66,34 @@ pick_pip_index() {
   done
   echo "WARNING: no pip index responded quickly; falling back to pypi.org" >&2
   PIP_INDEX="https://pypi.org/simple"
-  export PIP_INDEX_URL="${PIP_INDEX}"
 }
 
-apt-get update -y
 apt-get install -y "${PYTHON}-venv" "${PYTHON}-setuptools" "${PYTHON}-wheel" curl git
 
 pick_pip_index
+# Prefer env config over CLI flags: some pip builds reject -i/--index-url oddly.
+export PIP_INDEX_URL="${PIP_INDEX}"
 
-if [[ -d "${INSTALL_DIR}/.git" ]]; then
-  git -C "${INSTALL_DIR}" pull --ff-only
-else
+if [[ ! -d "${INSTALL_DIR}/.git" ]]; then
   git clone "${REPO_URL}" "${INSTALL_DIR}"
 fi
 
 "${PYTHON}" -m venv "${INSTALL_DIR}/.venv"
-# shellcheck disable=SC1091
-source "${INSTALL_DIR}/.venv/bin/activate"
+VENV_PY="${INSTALL_DIR}/.venv/bin/python"
 
-# Options must follow the subcommand: `pip install -i URL ...` (not `pip -i URL install`).
 pip_install() {
   local attempt=1
   local max=4
   while true; do
-    if python -m pip install \
-      --disable-pip-version-check \
-      --default-timeout="${PIP_DEFAULT_TIMEOUT}" \
-      --index-url "${PIP_INDEX}" \
-      "$@"; then
+    # No -i / --index-url on CLI; PIP_INDEX_URL + PIP_DEFAULT_TIMEOUT are enough.
+    if "${VENV_PY}" -m pip install --disable-pip-version-check "$@"; then
       return 0
     fi
     if (( attempt >= max )); then
       echo "pip failed after ${max} attempts." >&2
-      echo "Index used: ${PIP_INDEX}" >&2
-      echo "Check: curl -I ${PIP_INDEX}/pip/" >&2
-      echo "Override: export VPNCTL_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple" >&2
+      echo "Index used: ${PIP_INDEX_URL}" >&2
+      echo "Check: curl -I ${PIP_INDEX_URL}/pip/" >&2
+      echo "Override: VPNCTL_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple" >&2
       return 1
     fi
     echo "pip failed (attempt ${attempt}/${max}), retrying in $((attempt * 3))s..." >&2
@@ -119,5 +125,5 @@ systemctl enable --now vpnctl
 echo
 echo "vpnctl is running on http://127.0.0.1:8080/"
 echo "API token is in /etc/vpnctl/config.yaml (api.token)."
-echo "Pip index used: ${PIP_INDEX}"
+echo "Pip index used: ${PIP_INDEX_URL}"
 echo "To expose over VPN, set api.host / allow_from_vpn in that file and restart."

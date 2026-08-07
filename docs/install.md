@@ -22,6 +22,15 @@ Expected layout (current angristan defaults):
 curl -fsSL https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh | sudo bash
 ```
 
+The one-liner refreshes `/opt/vpnctl` and then **re-executes the local** `scripts/install.sh` (avoids stale CDN copies).
+
+If `curl | bash` misbehaves, run the local copy:
+
+```bash
+sudo git -C /opt/vpnctl pull --ff-only
+sudo bash /opt/vpnctl/scripts/install.sh --from-local
+```
+
 Or manually:
 
 ```bash
