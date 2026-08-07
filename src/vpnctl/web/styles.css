@@ -134,7 +134,7 @@ button {
 
 button.secondary,
 button.theme-toggle {
-  background: transparent;
+  background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
 }
@@ -151,8 +151,10 @@ button:disabled {
 
 .theme-toggle {
   min-width: 2.5rem;
-  padding-left: 0.7rem;
-  padding-right: 0.7rem;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  line-height: 1;
+  font-size: 1.1rem;
 }
 
 .tabs {

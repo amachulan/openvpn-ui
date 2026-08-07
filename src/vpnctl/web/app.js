@@ -16,8 +16,10 @@
     document.documentElement.setAttribute("data-theme", next);
     localStorage.setItem(themeKey, next);
     if (themeToggle) {
-      themeToggle.textContent = next === "light" ? "Dark" : "Light";
-      themeToggle.title = next === "light" ? "Switch to dark theme" : "Switch to light theme";
+      // Same as internal vpnctl: sun while dark (switch to light), moon while light.
+      themeToggle.textContent = next === "dark" ? "☀" : "☾";
+      themeToggle.title = next === "dark" ? "Светлая тема" : "Тёмная тема";
+      themeToggle.setAttribute("aria-label", themeToggle.title);
     }
   }
 
