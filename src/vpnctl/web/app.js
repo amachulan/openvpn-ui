@@ -75,10 +75,11 @@
     const tbody = $("#clients-body");
     tbody.innerHTML = `<tr><td colspan="6">Loading…</td></tr>`;
     try {
-      const [clients, expiry] = await Promise.all([
-        api("/api/v1/clients"),
-        api("/api/v1/expiry"),
-      ]);
+      const clients = await api("/api/v1/clients");
+      const warnDays = 30;
+      const expiry = clients.filter(
+        (c) => c.status === "valid" && c.days_remaining != null && c.days_remaining <= warnDays
+      );
       const banner = $("#expiry-banner");
       if (expiry.length) {
         banner.hidden = false;
@@ -89,7 +90,7 @@
         banner.hidden = true;
       }
       if (!clients.length) {
-        tbody.innerHTML = `<tr><td colspan="6">No certificates in PKI index.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6">No client certificates in PKI.</td></tr>`;
         return;
       }
       tbody.innerHTML = "";

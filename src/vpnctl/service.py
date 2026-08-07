@@ -60,7 +60,11 @@ class VpnctlService:
         }
 
     def list_clients(self) -> list[dict[str, Any]]:
-        certs = pki.list_certificates(self.easy_rsa_dir)
+        certs = pki.list_certificates(
+            self.easy_rsa_dir,
+            clients_only=True,
+            server_conf=path_from_cfg(self.cfg, "server_conf"),
+        )
         meta = self.catalog.all_clients()
         online = {c.cn for c in self.list_sessions()}
         out: list[dict[str, Any]] = []
@@ -208,14 +212,18 @@ class VpnctlService:
         )
 
     def list_sessions(self) -> list[OnlineClient]:
+        """Prefer status log; only touch management if the log file is missing."""
         status_path = resolve_status_log_path(self.cfg)
-        clients = read_online_clients(status_path)
-        if clients:
-            return clients
+        if status_path.is_file():
+            return read_online_clients(status_path)
         try:
-            return OpenVpnManagementClient(resolve_management(self.cfg)).list_sessions()
+            endpoint = resolve_management(self.cfg)
+            # Keep listing snappy if management is unreachable.
+            endpoint = dict(endpoint)
+            endpoint["timeout"] = min(float(endpoint.get("timeout") or 15), 2.0)
+            return OpenVpnManagementClient(endpoint).list_sessions()
         except ManagementError:
-            return clients
+            return []
 
     def disconnect(
         self,
@@ -240,7 +248,11 @@ class VpnctlService:
     def expiry_warnings(self) -> list[dict[str, Any]]:
         warn_days = int((self.cfg.get("expiry") or {}).get("warn_days") or 30)
         out: list[dict[str, Any]] = []
-        for cert in pki.list_certificates(self.easy_rsa_dir):
+        for cert in pki.list_certificates(
+            self.easy_rsa_dir,
+            clients_only=True,
+            server_conf=path_from_cfg(self.cfg, "server_conf"),
+        ):
             if cert.status != "valid":
                 continue
             if cert.days_remaining is None:

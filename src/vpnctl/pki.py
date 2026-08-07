@@ -60,6 +60,20 @@ def ca_cert_path(easy_rsa_dir: Path) -> Path:
     return pki_dir(easy_rsa_dir) / "ca.crt"
 
 
+def parse_index_expiry(raw: str) -> tuple[str, int | None]:
+    """Parse Easy-RSA index expiry field (YYMMDDHHMMSSZ)."""
+    value = (raw or "").strip()
+    if len(value) < 13 or not value.endswith("Z"):
+        return "", None
+    try:
+        dt = datetime.strptime(value[:12], "%y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return "", None
+    now = datetime.now(timezone.utc)
+    days = int((dt - now).total_seconds() // 86400)
+    return dt.date().isoformat(), days
+
+
 def parse_index_txt(text: str) -> list[CertInfo]:
     """Parse Easy-RSA index.txt into cert rows (latest status per CN wins)."""
     by_cn: dict[str, CertInfo] = {}
@@ -75,7 +89,7 @@ def parse_index_txt(text: str) -> list[CertInfo]:
             parts = re.split(r"\s+", line, maxsplit=5)
         if len(parts) < 4:
             continue
-        # serial is usually field index 3
+        expiry_raw = parts[1].strip() if len(parts) > 1 else ""
         serial = parts[3].strip() if len(parts) > 3 else ""
         dn = parts[-1]
         match = INDEX_CN_RE.search(dn)
@@ -91,7 +105,16 @@ def parse_index_txt(text: str) -> list[CertInfo]:
             status = "expired"
         else:
             status = "revoked"
-        by_cn[cn] = CertInfo(cn=cn, status=status, serial=serial)
+        expires_at, days_remaining = parse_index_expiry(expiry_raw)
+        if days_remaining is not None and days_remaining < 0 and status == "valid":
+            status = "expired"
+        by_cn[cn] = CertInfo(
+            cn=cn,
+            status=status,
+            serial=serial,
+            expires_at=expires_at,
+            days_remaining=days_remaining,
+        )
     return sorted(by_cn.values(), key=lambda c: c.cn.lower())
 
 
@@ -104,13 +127,12 @@ def _openssl_enddate(cert_file: Path) -> tuple[str, int | None]:
             capture_output=True,
             text=True,
             check=False,
-            timeout=10,
+            timeout=5,
         )
     except (OSError, subprocess.TimeoutExpired):
         return "", None
     if proc.returncode != 0:
         return "", None
-    # notAfter=Oct  5 12:00:00 2027 GMT
     line = (proc.stdout or "").strip()
     if "=" not in line:
         return "", None
@@ -129,21 +151,61 @@ def _openssl_enddate(cert_file: Path) -> tuple[str, int | None]:
     return dt.date().isoformat(), days
 
 
-def list_certificates(easy_rsa_dir: Path) -> list[CertInfo]:
+def server_certificate_cns(server_conf: Path) -> set[str]:
+    """CNs that belong to the OpenVPN server (should not appear as clients)."""
+    found: set[str] = set()
+    if not server_conf.is_file():
+        return found
+    for raw in server_conf.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) >= 2 and parts[0].lower() == "cert":
+            stem = Path(parts[1]).stem
+            if stem:
+                found.add(stem)
+    return found
+
+
+def is_server_cn(cn: str, server_cns: set[str] | None = None) -> bool:
+    """Heuristic: angristan uses server_<id>; also honor server.conf cert name."""
+    if cn in (server_cns or set()):
+        return True
+    # angristan/openvpn-install default server CN pattern
+    if cn.startswith("server_"):
+        return True
+    if cn in {"server", "ca"}:
+        return True
+    return False
+
+
+def list_certificates(
+    easy_rsa_dir: Path,
+    *,
+    clients_only: bool = True,
+    server_conf: Path | None = None,
+) -> list[CertInfo]:
     idx = index_path(easy_rsa_dir)
     if not idx.is_file():
         return []
     certs = parse_index_txt(idx.read_text(encoding="utf-8", errors="replace"))
+    server_cns = server_certificate_cns(server_conf) if server_conf else set()
+    out: list[CertInfo] = []
     for cert in certs:
+        if clients_only and is_server_cn(cert.cn, server_cns):
+            continue
         cert_file = issued_cert_path(easy_rsa_dir, cert.cn)
         cert.cert_path = str(cert_file) if cert_file.is_file() else ""
-        if cert_file.is_file():
+        # Prefer index expiry (no openssl spawn). Fall back only if missing.
+        if not cert.expires_at and cert_file.is_file():
             expires, days = _openssl_enddate(cert_file)
             cert.expires_at = expires
             cert.days_remaining = days
             if days is not None and days < 0 and cert.status == "valid":
                 cert.status = "expired"
-    return certs
+        out.append(cert)
+    return out
 
 
 def _run_easyrsa(easy_rsa_dir: Path, args: list[str], env: dict[str, str] | None = None) -> None:
