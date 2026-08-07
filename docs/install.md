@@ -38,20 +38,27 @@ sudo systemctl enable --now vpnctl
 
 ### PyPI timeouts
 
-Some VPS providers have slow or filtered access to `pypi.org`. Symptoms: `ReadTimeoutError` during `pip install`.
+Some VPS providers have slow or filtered access to `pypi.org`. Symptoms: `ReadTimeoutError` / `No matching distribution found for setuptools`.
+
+Nested pip (build isolation) uses **`PIP_DEFAULT_TIMEOUT` from the environment**, not only `--default-timeout`.
 
 ```bash
-# longer timeout / retries (install.sh does this by default now)
 export PIP_DEFAULT_TIMEOUT=180
-sudo -E bash scripts/install.sh
-
-# or finish a half-installed clone:
 cd /opt/vpnctl
 source .venv/bin/activate
-pip install --default-timeout=180 .
+pip install --default-timeout=180 setuptools wheel
+pip install --default-timeout=180 --no-build-isolation .
 sudo ln -sfn /opt/vpnctl/.venv/bin/vpnctl /usr/local/bin/vpnctl
 sudo vpnctl install --systemd
 sudo systemctl daemon-reload && sudo systemctl enable --now vpnctl
+```
+
+If PyPI is unreachable, try a mirror:
+
+```bash
+export PIP_DEFAULT_TIMEOUT=180
+export VPNCTL_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+# or re-run: curl -fsSL .../install.sh | sudo -E bash
 ```
 
 Check outbound HTTPS: `curl -I https://pypi.org/simple/pip/`.
