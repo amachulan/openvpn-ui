@@ -254,6 +254,55 @@ def issue_client(
     return certs[cn]
 
 
+def renew_client(
+    easy_rsa_dir: Path,
+    cn: str,
+    crl_publish: Path,
+    *,
+    days: int = 3650,
+) -> CertInfo:
+    """Renew an existing client cert (Easy-RSA renew + revoke-renewed + CRL)."""
+    cn = validate_cn(cn)
+    existing = {c.cn: c for c in list_certificates(easy_rsa_dir)}
+    if cn not in existing:
+        raise PkiError(f"unknown client: {cn}")
+    if existing[cn].status == "revoked":
+        raise PkiError(f"cannot renew revoked client: {cn}")
+
+    import os
+
+    env = os.environ.copy()
+    env["EASYRSA_CERT_EXPIRE"] = str(int(days))
+    issued = issued_cert_path(easy_rsa_dir, cn)
+    if issued.is_file():
+        try:
+            shutil.copy2(issued, issued.with_suffix(".crt.bak"))
+        except OSError:
+            pass
+    _run_easyrsa(easy_rsa_dir, ["renew", cn], env=env)
+    try:
+        _run_easyrsa(easy_rsa_dir, ["revoke-renewed", cn])
+    except PkiError:
+        # Older Easy-RSA builds may not ship revoke-renewed; CRL still refreshed below.
+        pass
+
+    env.setdefault("EASYRSA_CRL_DAYS", "3650")
+    _run_easyrsa(easy_rsa_dir, ["gen-crl"], env=env)
+    src = pki_dir(easy_rsa_dir) / "crl.pem"
+    if src.is_file():
+        crl_publish.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, crl_publish)
+        try:
+            crl_publish.chmod(0o644)
+        except OSError:
+            pass
+
+    certs = {c.cn: c for c in list_certificates(easy_rsa_dir)}
+    if cn not in certs or certs[cn].status != "valid":
+        raise PkiError(f"renew finished but {cn} is not valid in index")
+    return certs[cn]
+
+
 def revoke_client(easy_rsa_dir: Path, cn: str, crl_publish: Path) -> CertInfo:
     cn = validate_cn(cn)
     existing = {c.cn: c for c in list_certificates(easy_rsa_dir)}

@@ -10,6 +10,11 @@ paths:
   crl_publish: /etc/openvpn/server/crl.pem
   client_output_dir: /var/lib/vpnctl/clients
   catalog_db: /var/lib/vpnctl/catalog.db
+  server_conf_backup_dir: /var/lib/vpnctl/backups
+
+# OpenVPN systemd unit (empty = auto-detect openvpn-server@server).
+openvpn:
+  service: ""
 
 # Management interface: unix socket (angristan default) or TCP.
 openvpn_management:

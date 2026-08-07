@@ -54,6 +54,24 @@ api:
 
 Then the next one-liner restart will apply it, or: `sudo systemctl restart vpnctl`.
 
+## OpenVPN server admin (UI)
+
+The **Server** tab edits `/etc/openvpn/server/server.conf` (with backups under `/var/lib/vpnctl/backups/`) and can restart the OpenVPN unit (default `openvpn-server@server`).
+
+vpnctl runs as root via systemd today, so `systemctl restart openvpn-server@server` works. Override the unit name with:
+
+```yaml
+openvpn:
+  service: openvpn-server@server
+```
+
+If a save breaks the VPN, restore from the Server → Backups list, or:
+
+```bash
+sudo cp /var/lib/vpnctl/backups/server.conf.TIMESTAMP /etc/openvpn/server/server.conf
+sudo systemctl restart openvpn-server@server
+```
+
 ## Verify
 
 ```bash

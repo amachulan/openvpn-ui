@@ -20,6 +20,8 @@ from .config import (
 )
 from .management import ManagementError, OpenVpnManagementClient, SessionNotFoundError
 from .notify import NotifyError, send_ovpn_email, send_ovpn_telegram
+from . import openvpn_svc
+from . import server_conf
 from .status import OnlineClient, read_online_clients
 
 
@@ -42,7 +44,7 @@ class VpnctlService:
         allow_nets = [str(n) for n in resolve_allow_networks(self.cfg)]
         return {
             "ok": True,
-            "version": "0.1.2",
+            "version": "0.2.0",
             "config_path": self.cfg.get("_config_path"),
             "easy_rsa_dir": str(easy),
             "index_txt": idx.is_file(),
@@ -194,6 +196,26 @@ class VpnctlService:
         out["disconnect"] = disconnect_info
         return out
 
+    def renew(self, cn: str, *, days: int = 3650) -> dict[str, Any]:
+        cert = pki.renew_client(
+            self.easy_rsa_dir,
+            cn,
+            path_from_cfg(self.cfg, "crl_publish"),
+            days=days,
+        )
+        ovpn = pki.build_ovpn(
+            easy_rsa_dir=self.easy_rsa_dir,
+            server_dir=path_from_cfg(self.cfg, "openvpn_server_dir"),
+            server_conf=path_from_cfg(self.cfg, "server_conf"),
+            client_template=path_from_cfg(self.cfg, "client_template"),
+            cn=cert.cn,
+            output_dir=path_from_cfg(self.cfg, "client_output_dir"),
+        )
+        self.catalog.add_event("client_renew", cn=cert.cn, detail=f"days={days}")
+        result = cert.to_dict()
+        result["ovpn_path"] = str(ovpn)
+        return result
+
     def ovpn_path(self, cn: str) -> Path:
         cn = pki.validate_cn(cn)
         output_dir = path_from_cfg(self.cfg, "client_output_dir")
@@ -327,3 +349,114 @@ class VpnctlService:
             self.catalog.add_event("deliver_telegram", cn=cn, detail=chat)
             return {"via": "telegram", "chat_id": chat}
         raise NotifyError(f"unsupported delivery channel: {via}")
+
+    def _backup_dir(self) -> Path:
+        try:
+            return path_from_cfg(self.cfg, "server_conf_backup_dir")
+        except KeyError:
+            return Path("/var/lib/vpnctl/backups")
+
+    def _openvpn_unit(self) -> str:
+        block = self.cfg.get("openvpn") or {}
+        return openvpn_svc.resolve_unit(str(block.get("service") or "") or None)
+
+    def get_server(self) -> dict[str, Any]:
+        conf_path = path_from_cfg(self.cfg, "server_conf")
+        text, settings = server_conf.read_server_conf(conf_path)
+        unit = self._openvpn_unit()
+        try:
+            status = openvpn_svc.service_status(unit)
+        except openvpn_svc.OpenVpnServiceError as exc:
+            status = {
+                "unit": unit,
+                "active": "unknown",
+                "enabled": "unknown",
+                "running": False,
+                "error": str(exc),
+            }
+        return {
+            "settings": settings.to_dict(),
+            "service": status,
+            "paths": {
+                "server_conf": str(conf_path),
+                "client_template": str(path_from_cfg(self.cfg, "client_template")),
+                "backup_dir": str(self._backup_dir()),
+            },
+            "conf_bytes": len(text.encode("utf-8")),
+        }
+
+    def update_server(
+        self,
+        patch: dict[str, Any],
+        *,
+        restart: bool = False,
+    ) -> dict[str, Any]:
+        conf_path = path_from_cfg(self.cfg, "server_conf")
+        text, _ = server_conf.read_server_conf(conf_path)
+        clean = server_conf.validate_settings_patch(patch)
+        if not clean:
+            raise server_conf.ServerConfError("no settings to update")
+        new_text = server_conf.apply_settings_patch(text, clean)
+        backup = server_conf.write_server_conf(conf_path, new_text, self._backup_dir())
+        template_changed = server_conf.sync_client_template(
+            path_from_cfg(self.cfg, "client_template"),
+            port=clean.get("port"),
+            proto=clean.get("proto"),
+        )
+        detail = ",".join(sorted(clean.keys()))
+        if template_changed:
+            detail += ";template"
+        self.catalog.add_event("server_conf_update", cn="", detail=detail)
+        result = self.get_server()
+        result["backup"] = str(backup) if backup else ""
+        result["template_synced"] = template_changed
+        if restart:
+            result["restart"] = self.restart_openvpn()
+        return result
+
+    def get_server_conf_raw(self) -> dict[str, Any]:
+        conf_path = path_from_cfg(self.cfg, "server_conf")
+        text, _ = server_conf.read_server_conf(conf_path)
+        return {"path": str(conf_path), "content": text}
+
+    def put_server_conf_raw(self, content: str, *, restart: bool = False) -> dict[str, Any]:
+        if not (content or "").strip():
+            raise server_conf.ServerConfError("server.conf cannot be empty")
+        conf_path = path_from_cfg(self.cfg, "server_conf")
+        backup = server_conf.write_server_conf(
+            conf_path, content, self._backup_dir()
+        )
+        self.catalog.add_event("server_conf_update", cn="", detail="raw")
+        result = {
+            "ok": True,
+            "backup": str(backup) if backup else "",
+            "path": str(conf_path),
+        }
+        if restart:
+            result["restart"] = self.restart_openvpn()
+        return result
+
+    def list_server_backups(self) -> list[dict[str, Any]]:
+        return server_conf.list_backups(self._backup_dir())
+
+    def restore_server_backup(
+        self, backup_id: str, *, restart: bool = False
+    ) -> dict[str, Any]:
+        conf_path = path_from_cfg(self.cfg, "server_conf")
+        server_conf.restore_backup(self._backup_dir(), backup_id, conf_path)
+        self.catalog.add_event("server_restore", cn="", detail=backup_id)
+        result: dict[str, Any] = {"ok": True, "restored": backup_id}
+        if restart:
+            result["restart"] = self.restart_openvpn()
+        result["server"] = self.get_server()
+        return result
+
+    def restart_openvpn(self) -> dict[str, Any]:
+        unit = self._openvpn_unit()
+        try:
+            result = openvpn_svc.restart_service(unit)
+        except openvpn_svc.OpenVpnServiceError as exc:
+            self.catalog.add_event("server_restart", cn="", detail=f"error: {exc}")
+            raise
+        self.catalog.add_event("server_restart", cn="", detail=unit)
+        return result

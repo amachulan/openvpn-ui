@@ -13,10 +13,12 @@
       tab_clients: "Clients",
       tab_issue: "Issue",
       tab_sessions: "Sessions",
+      tab_server: "Server",
       tab_audit: "Audit",
       tab_settings: "Settings",
       clients_title: "Clients",
       sessions_title: "Sessions",
+      server_title: "OpenVPN server",
       audit_title: "Audit",
       settings_title: "Notification settings",
       settings_hint: "Saved to /etc/vpnctl/config.yaml. Leave password/token blank to keep the current value.",
@@ -36,6 +38,45 @@
       settings_secret_set: "saved — leave blank to keep",
       settings_save: "Save notifications",
       settings_saved: "Notification settings saved",
+      server_hint: "Edits write server.conf (with backup). OpenVPN must be restarted to apply most changes.",
+      server_network: "Network & policy",
+      server_crypto: "Crypto",
+      server_port: "Port",
+      server_proto: "Protocol",
+      server_duplicate_cn: "Allow same cert on multiple devices",
+      server_client_to_client: "Client-to-client",
+      server_redirect_gateway: "Route internet through VPN",
+      server_dns: "DNS (one per line)",
+      server_local_networks: "Local networks CIDR (one per line)",
+      server_tls_mode: "TLS mode (read-only)",
+      server_cipher: "Cipher",
+      server_data_ciphers: "data-ciphers",
+      server_auth: "auth",
+      server_tls_min: "tls-version-min",
+      server_restart_after: "Restart OpenVPN after save",
+      server_save: "Save server settings",
+      server_saved: "Server settings saved",
+      server_restart: "Restart OpenVPN",
+      server_restart_confirm: "Restart OpenVPN now? Active sessions will drop briefly.",
+      server_restarted: "OpenVPN restarted",
+      server_raw_title: "Advanced: raw server.conf",
+      server_raw_label: "server.conf",
+      server_raw_save: "Save raw conf",
+      server_raw_confirm: "Overwrite server.conf with this raw text?",
+      server_raw_saved: "Raw server.conf saved",
+      server_backups_title: "Backups",
+      server_restore: "Restore",
+      server_restore_confirm: "Restore backup {id}? Current conf will be backed up first.",
+      server_restored: "Backup restored",
+      server_unit: "Unit",
+      server_state: "State",
+      server_pid: "PID",
+      col_backup: "Backup",
+      col_size: "Size",
+      no_backups: "No backups yet.",
+      renew: "Renew",
+      renew_confirm: "Renew certificate for {cn}?",
+      renewed: "Renewed {cn}",
       issue_title: "Issue client",
       refresh: "Refresh",
       col_cn: "CN",
@@ -92,10 +133,12 @@
       tab_clients: "Клиенты",
       tab_issue: "Выпуск",
       tab_sessions: "Сессии",
+      tab_server: "Сервер",
       tab_audit: "Аудит",
       tab_settings: "Настройки",
       clients_title: "Клиенты",
       sessions_title: "Сессии",
+      server_title: "Сервер OpenVPN",
       audit_title: "Аудит",
       settings_title: "Настройки уведомлений",
       settings_hint: "Сохраняется в /etc/vpnctl/config.yaml. Пустой пароль/токен — оставить текущее значение.",
@@ -115,6 +158,45 @@
       settings_secret_set: "сохранён — оставьте пустым, чтобы не менять",
       settings_save: "Сохранить уведомления",
       settings_saved: "Настройки уведомлений сохранены",
+      server_hint: "Изменения пишутся в server.conf (с бэкапом). Для применения обычно нужен restart OpenVPN.",
+      server_network: "Сеть и политика",
+      server_crypto: "Крипто",
+      server_port: "Порт",
+      server_proto: "Протокол",
+      server_duplicate_cn: "Один сертификат на нескольких устройствах",
+      server_client_to_client: "Клиент-клиент",
+      server_redirect_gateway: "Интернет через VPN",
+      server_dns: "DNS (по одному в строке)",
+      server_local_networks: "Локальные сети CIDR (по одному в строке)",
+      server_tls_mode: "TLS-режим (только чтение)",
+      server_cipher: "Cipher",
+      server_data_ciphers: "data-ciphers",
+      server_auth: "auth",
+      server_tls_min: "tls-version-min",
+      server_restart_after: "Перезапустить OpenVPN после сохранения",
+      server_save: "Сохранить настройки сервера",
+      server_saved: "Настройки сервера сохранены",
+      server_restart: "Перезапустить OpenVPN",
+      server_restart_confirm: "Перезапустить OpenVPN сейчас? Активные сессии кратко оборвутся.",
+      server_restarted: "OpenVPN перезапущен",
+      server_raw_title: "Дополнительно: сырой server.conf",
+      server_raw_label: "server.conf",
+      server_raw_save: "Сохранить сырой conf",
+      server_raw_confirm: "Перезаписать server.conf этим текстом?",
+      server_raw_saved: "Сырой server.conf сохранён",
+      server_backups_title: "Резервные копии",
+      server_restore: "Восстановить",
+      server_restore_confirm: "Восстановить бэкап {id}? Текущий conf сначала сохранится.",
+      server_restored: "Бэкап восстановлен",
+      server_unit: "Юнит",
+      server_state: "Состояние",
+      server_pid: "PID",
+      col_backup: "Бэкап",
+      col_size: "Размер",
+      no_backups: "Пока нет бэкапов.",
+      renew: "Продлить",
+      renew_confirm: "Продлить сертификат {cn}?",
+      renewed: "Продлён {cn}",
       issue_title: "Выпуск клиента",
       refresh: "Обновить",
       col_cn: "CN",
@@ -316,6 +398,7 @@
     });
     if (name === "clients") loadClients();
     if (name === "sessions") loadSessions();
+    if (name === "server") loadServer();
     if (name === "audit") loadAudit();
     if (name === "settings") loadSettings();
   }
@@ -365,6 +448,16 @@
             });
             downloadBlob(blob, `${c.cn}.ovpn`);
           });
+          const renewBtn = button(t("renew"), "secondary", async () => {
+            if (!confirm(t("renew_confirm", { cn: c.cn }))) return;
+            await api(`/api/v1/clients/${encodeURIComponent(c.cn)}/renew`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ days: 3650 }),
+            });
+            showStatus(t("renewed", { cn: c.cn }), "ok");
+            loadClients();
+          });
           const rev = button(t("revoke"), "danger", async () => {
             if (!confirm(t("revoke_confirm", { cn: c.cn }))) return;
             await api(`/api/v1/clients/${encodeURIComponent(c.cn)}/revoke`, {
@@ -373,7 +466,7 @@
             showStatus(t("revoked", { cn: c.cn }), "ok");
             loadClients();
           });
-          actions.append(dl, rev);
+          actions.append(dl, renewBtn, rev);
         }
         tbody.appendChild(tr);
       }
@@ -484,6 +577,96 @@
     }
   }
 
+  function linesToList(text) {
+    return String(text || "")
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  async function loadServer() {
+    const form = $("#server-form");
+    const rawForm = $("#server-raw-form");
+    const card = $("#server-service");
+    try {
+      const data = await api("/api/v1/server");
+      const s = data.settings || {};
+      const svc = data.service || {};
+      if (card) {
+        card.innerHTML = `
+          <span><span class="muted">${escapeHtml(t("server_unit"))}:</span> ${escapeHtml(svc.unit || "—")}</span>
+          <span><span class="muted">${escapeHtml(t("server_state"))}:</span>
+            <span class="badge ${svc.running ? "online" : "offline"}">${escapeHtml(svc.active || "unknown")}</span>
+          </span>
+          <span><span class="muted">${escapeHtml(t("server_pid"))}:</span> ${escapeHtml(svc.main_pid || "—")}</span>
+        `;
+      }
+      if (form) {
+        form.port.value = s.port != null ? s.port : "";
+        form.proto.value = s.proto || "udp";
+        form.duplicate_cn.checked = Boolean(s.duplicate_cn);
+        form.client_to_client.checked = Boolean(s.client_to_client);
+        form.redirect_gateway.checked = Boolean(s.redirect_gateway);
+        form.dns.value = (s.dns || []).join("\n");
+        form.local_networks.value = (s.local_networks || []).join("\n");
+        form.tls_mode.value = s.tls_mode || "none";
+        form.cipher.value = s.cipher || "";
+        form.data_ciphers.value = s.data_ciphers || "";
+        form.auth.value = s.auth || "";
+        form.tls_version_min.value = s.tls_version_min || "";
+        form.restart.checked = false;
+      }
+      const raw = await api("/api/v1/server/conf");
+      if (rawForm) {
+        rawForm.content.value = raw.content || "";
+        rawForm.restart.checked = false;
+      }
+      await loadBackups();
+      showStatus("");
+    } catch (err) {
+      if (card) card.textContent = err.message;
+      showStatus(err.message, "error");
+    }
+  }
+
+  async function loadBackups() {
+    const tbody = $("#backups-body");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="4">${escapeHtml(t("loading"))}</td></tr>`;
+    try {
+      const rows = await api("/api/v1/server/backups");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="4">${escapeHtml(t("no_backups"))}</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = "";
+      for (const b of rows) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><code>${escapeHtml(b.id)}</code></td>
+          <td>${escapeHtml(b.mtime || "")}</td>
+          <td>${escapeHtml(fmtBytes(b.size || 0))}</td>
+          <td class="actions"></td>
+        `;
+        const restoreBtn = button(t("server_restore"), "secondary", async () => {
+          if (!confirm(t("server_restore_confirm", { id: b.id }))) return;
+          const restart = confirm(t("server_restart_confirm"));
+          await api(`/api/v1/server/backups/${encodeURIComponent(b.id)}/restore`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ restart }),
+          });
+          showStatus(t("server_restored"), "ok");
+          await loadServer();
+        });
+        tr.querySelector(".actions").append(restoreBtn);
+        tbody.appendChild(tr);
+      }
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="4">${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+
   function button(label, cls, onClick) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -538,14 +721,78 @@
     const tab = activeTab();
     if (tab === "clients") loadClients();
     else if (tab === "sessions") loadSessions();
+    else if (tab === "server") loadServer();
     else if (tab === "audit") loadAudit();
     else if (tab === "settings") loadSettings();
   });
 
   $("#refresh-clients").addEventListener("click", loadClients);
   $("#refresh-sessions").addEventListener("click", loadSessions);
+  $("#refresh-server").addEventListener("click", loadServer);
+  $("#refresh-backups").addEventListener("click", loadBackups);
   $("#refresh-audit").addEventListener("click", loadAudit);
   $("#refresh-settings").addEventListener("click", loadSettings);
+
+  $("#restart-server").addEventListener("click", async () => {
+    if (!confirm(t("server_restart_confirm"))) return;
+    try {
+      await api("/api/v1/server/restart", { method: "POST" });
+      showStatus(t("server_restarted"), "ok");
+      await loadServer();
+    } catch (err) {
+      showStatus(err.message, "error");
+    }
+  });
+
+  $("#server-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const form = ev.target;
+    const body = {
+      port: Number(form.port.value || 0) || null,
+      proto: String(form.proto.value || "").trim(),
+      duplicate_cn: Boolean(form.duplicate_cn.checked),
+      client_to_client: Boolean(form.client_to_client.checked),
+      redirect_gateway: Boolean(form.redirect_gateway.checked),
+      dns: linesToList(form.dns.value),
+      local_networks: linesToList(form.local_networks.value),
+      cipher: String(form.cipher.value || "").trim(),
+      data_ciphers: String(form.data_ciphers.value || "").trim(),
+      auth: String(form.auth.value || "").trim(),
+      tls_version_min: String(form.tls_version_min.value || "").trim(),
+      restart: Boolean(form.restart.checked),
+    };
+    try {
+      await api("/api/v1/server", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      showStatus(t("server_saved"), "ok");
+      await loadServer();
+    } catch (err) {
+      showStatus(err.message, "error");
+    }
+  });
+
+  $("#server-raw-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!confirm(t("server_raw_confirm"))) return;
+    const form = ev.target;
+    try {
+      await api("/api/v1/server/conf", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: String(form.content.value || ""),
+          restart: Boolean(form.restart.checked),
+        }),
+      });
+      showStatus(t("server_raw_saved"), "ok");
+      await loadServer();
+    } catch (err) {
+      showStatus(err.message, "error");
+    }
+  });
 
   $("#settings-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();

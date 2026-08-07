@@ -22,6 +22,11 @@ def default_config() -> dict[str, Any]:
             "crl_publish": "/etc/openvpn/server/crl.pem",
             "client_output_dir": "/var/lib/vpnctl/clients",
             "catalog_db": "/var/lib/vpnctl/catalog.db",
+            "server_conf_backup_dir": "/var/lib/vpnctl/backups",
+        },
+        "openvpn": {
+            # Override if not angristan default openvpn-server@server.
+            "service": "",
         },
         "openvpn_management": {
             "timeout_seconds": 15,

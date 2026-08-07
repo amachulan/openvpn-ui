@@ -17,7 +17,9 @@ from vpnctl.api.auth import require_token
 from vpnctl.config import load_config
 from vpnctl.management import ManagementError, SessionNotFoundError
 from vpnctl.notify import NotifyError
+from vpnctl.openvpn_svc import OpenVpnServiceError
 from vpnctl.pki import PkiError
+from vpnctl.server_conf import ServerConfError
 from vpnctl.service import VpnctlService
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -93,6 +95,34 @@ class NotifySettingsBody(BaseModel):
     telegram: TelegramSettingsBody | None = None
 
 
+class RenewBody(BaseModel):
+    days: int = Field(3650, ge=1, le=36500)
+
+
+class ServerSettingsBody(BaseModel):
+    port: int | None = Field(None, ge=1, le=65535)
+    proto: str | None = None
+    duplicate_cn: bool | None = None
+    client_to_client: bool | None = None
+    redirect_gateway: bool | None = None
+    dns: list[str] | None = None
+    local_networks: list[str] | None = None
+    cipher: str | None = None
+    data_ciphers: str | None = None
+    auth: str | None = None
+    tls_version_min: str | None = None
+    restart: bool = False
+
+
+class RawConfBody(BaseModel):
+    content: str
+    restart: bool = False
+
+
+class RestoreBody(BaseModel):
+    restart: bool = False
+
+
 def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
     cfg = cfg or load_config()
     service = VpnctlService(cfg)
@@ -148,6 +178,13 @@ def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
     def revoke(cn: str, _: str = Depends(auth)) -> dict[str, Any]:
         try:
             return service.revoke(cn)
+        except PkiError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/v1/clients/{cn}/renew")
+    def renew(cn: str, body: RenewBody = RenewBody(), _: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.renew(cn, days=body.days)
         except PkiError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -221,6 +258,71 @@ def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
             )
         except (OSError, ValueError) as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.get("/api/v1/server")
+    def get_server(_: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.get_server()
+        except ServerConfError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.put("/api/v1/server")
+    def put_server(body: ServerSettingsBody, _: str = Depends(auth)) -> dict[str, Any]:
+        data = body.model_dump(exclude_unset=True)
+        restart = bool(data.pop("restart", False))
+        try:
+            return service.update_server(data, restart=restart)
+        except ServerConfError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.get("/api/v1/server/conf")
+    def get_server_conf(_: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.get_server_conf_raw()
+        except ServerConfError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.put("/api/v1/server/conf")
+    def put_server_conf(body: RawConfBody, _: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.put_server_conf_raw(body.content, restart=body.restart)
+        except ServerConfError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.get("/api/v1/server/backups")
+    def list_server_backups(_: str = Depends(auth)) -> list[dict[str, Any]]:
+        return service.list_server_backups()
+
+    @app.post("/api/v1/server/backups/{backup_id}/restore")
+    def restore_server_backup(
+        backup_id: str,
+        body: RestoreBody | None = None,
+        _: str = Depends(auth),
+    ) -> dict[str, Any]:
+        payload = body or RestoreBody()
+        try:
+            return service.restore_server_backup(backup_id, restart=payload.restart)
+        except ServerConfError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.post("/api/v1/server/restart")
+    def restart_server(_: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.restart_openvpn()
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     if WEB_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
