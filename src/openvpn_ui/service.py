@@ -226,15 +226,7 @@ class OpenVpnUiService:
         inst = get_instance(self.cfg, family)
         if not inst.get("enabled"):
             raise pki.PkiError(f"{family} instance is not enabled")
-        output_dir = path_from_cfg(self.cfg, "client_output_dir")
-        preferred = output_dir / f"{cn}-{family}.ovpn"
-        if preferred.is_file():
-            return preferred
-        # Legacy single-file profile for primary only.
-        if family == primary_instance_id(self.cfg):
-            legacy = pki.find_existing_ovpn(cn, output_dir)
-            if legacy is not None:
-                return legacy
+        # Always rebuild so port/proto/crypto match current instance settings.
         paths = self._build_client_profiles(cn)
         for path in paths:
             if path.name.endswith(f"-{family}.ovpn") or (
