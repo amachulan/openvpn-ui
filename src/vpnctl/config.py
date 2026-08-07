@@ -87,6 +87,114 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
     return cfg
 
 
+def _config_file_path(cfg: dict[str, Any]) -> Path:
+    raw = str(cfg.get("_config_path") or "").strip()
+    return Path(raw) if raw else config_path_env()
+
+
+def _load_on_disk(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"Config must be a mapping: {path}")
+    return data
+
+
+def write_config_file(path: Path, data: dict[str, Any]) -> None:
+    """Atomically write YAML config (does not include private `_` keys)."""
+    clean = {k: v for k, v in data.items() if not str(k).startswith("_")}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = yaml.safe_dump(
+        clean,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+    )
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def public_notify_settings(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Mail/Telegram settings for the UI (secrets redacted)."""
+    mail = dict(cfg.get("mail") or {})
+    tg = dict(cfg.get("telegram") or {})
+    password = str(mail.get("smtp_password") or "")
+    token = str(tg.get("bot_token") or "")
+    return {
+        "mail": {
+            "enabled": bool(mail.get("enabled")),
+            "smtp_host": str(mail.get("smtp_host") or "localhost"),
+            "smtp_port": int(mail.get("smtp_port") or 25),
+            "smtp_user": str(mail.get("smtp_user") or ""),
+            "smtp_password_set": bool(password),
+            "use_tls": bool(mail.get("use_tls")),
+            "from_addr": str(mail.get("from_addr") or ""),
+            "subject": str(mail.get("subject") or ""),
+        },
+        "telegram": {
+            "enabled": bool(tg.get("enabled")),
+            "bot_token_set": bool(token),
+            "chat_id": str(tg.get("chat_id") or ""),
+        },
+    }
+
+
+def normalize_mail_settings(
+    incoming: dict[str, Any],
+    existing: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev = dict(existing or {})
+    password = str(incoming.get("smtp_password") or "").strip()
+    if not password:
+        password = str(prev.get("smtp_password") or "")
+    return {
+        "enabled": bool(incoming.get("enabled")),
+        "smtp_host": str(incoming.get("smtp_host") or "localhost").strip() or "localhost",
+        "smtp_port": int(incoming.get("smtp_port") or 25),
+        "smtp_user": str(incoming.get("smtp_user") or "").strip(),
+        "smtp_password": password,
+        "use_tls": bool(incoming.get("use_tls")),
+        "from_addr": str(incoming.get("from_addr") or "").strip(),
+        "subject": str(incoming.get("subject") or "").strip()
+        or "Your OpenVPN profile",
+    }
+
+
+def normalize_telegram_settings(
+    incoming: dict[str, Any],
+    existing: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev = dict(existing or {})
+    token = str(incoming.get("bot_token") or "").strip()
+    if not token:
+        token = str(prev.get("bot_token") or "")
+    return {
+        "enabled": bool(incoming.get("enabled")),
+        "bot_token": token,
+        "chat_id": str(incoming.get("chat_id") or "").strip(),
+    }
+
+
+def persist_notify_settings(
+    cfg: dict[str, Any],
+    *,
+    mail: dict[str, Any],
+    telegram: dict[str, Any],
+) -> dict[str, Any]:
+    """Update in-memory cfg and persist mail/telegram to the config file."""
+    path = _config_file_path(cfg)
+    on_disk = _load_on_disk(path)
+    on_disk["mail"] = mail
+    on_disk["telegram"] = telegram
+    write_config_file(path, on_disk)
+    cfg["mail"] = mail
+    cfg["telegram"] = telegram
+    cfg["_config_path"] = str(path)
+    return cfg
+
+
 def path_from_cfg(cfg: dict[str, Any], key: str) -> Path:
     paths = cfg.get("paths") or {}
     raw = paths.get(key)

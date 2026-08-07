@@ -43,6 +43,7 @@ expiry:
   warn_days: 30
 
 # Optional delivery of .ovpn after issue.
+# Can also be edited in the UI (Settings tab).
 mail:
   enabled: false
   smtp_host: localhost

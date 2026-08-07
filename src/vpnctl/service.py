@@ -10,7 +10,11 @@ from .catalog import Catalog
 from .access import is_loopback_bind, resolve_allow_networks
 from .config import (
     load_config,
+    normalize_mail_settings,
+    normalize_telegram_settings,
     path_from_cfg,
+    persist_notify_settings,
+    public_notify_settings,
     resolve_management,
     resolve_status_log_path,
 )
@@ -266,6 +270,36 @@ class VpnctlService:
 
     def audit(self, limit: int = 100) -> list[dict[str, Any]]:
         return [e.to_dict() for e in self.catalog.list_events(limit=limit)]
+
+    def get_notify_settings(self) -> dict[str, Any]:
+        return public_notify_settings(self.cfg)
+
+    def update_notify_settings(
+        self,
+        *,
+        mail: dict[str, Any] | None = None,
+        telegram: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        next_mail = normalize_mail_settings(
+            mail if mail is not None else (self.cfg.get("mail") or {}),
+            self.cfg.get("mail") or {},
+        )
+        next_tg = normalize_telegram_settings(
+            telegram if telegram is not None else (self.cfg.get("telegram") or {}),
+            self.cfg.get("telegram") or {},
+        )
+        persist_notify_settings(self.cfg, mail=next_mail, telegram=next_tg)
+        parts: list[str] = []
+        if mail is not None:
+            parts.append("mail")
+        if telegram is not None:
+            parts.append("telegram")
+        self.catalog.add_event(
+            "settings_update",
+            cn="",
+            detail=",".join(parts) or "notify",
+        )
+        return public_notify_settings(self.cfg)
 
     def deliver(
         self,

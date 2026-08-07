@@ -14,9 +14,28 @@
       tab_issue: "Issue",
       tab_sessions: "Sessions",
       tab_audit: "Audit",
+      tab_settings: "Settings",
       clients_title: "Clients",
       sessions_title: "Sessions",
       audit_title: "Audit",
+      settings_title: "Notification settings",
+      settings_hint: "Saved to /etc/vpnctl/config.yaml. Leave password/token blank to keep the current value.",
+      settings_mail: "Email (SMTP)",
+      settings_telegram: "Telegram",
+      settings_enabled: "Enabled",
+      settings_smtp_host: "SMTP host",
+      settings_smtp_port: "SMTP port",
+      settings_smtp_user: "SMTP user",
+      settings_smtp_password: "SMTP password",
+      settings_use_tls: "STARTTLS",
+      settings_from_addr: "From address",
+      settings_subject: "Subject",
+      settings_bot_token: "Bot token",
+      settings_chat_id: "Default chat id",
+      settings_secret_keep: "Leave blank to keep",
+      settings_secret_set: "saved — leave blank to keep",
+      settings_save: "Save notifications",
+      settings_saved: "Notification settings saved",
       issue_title: "Issue client",
       refresh: "Refresh",
       col_cn: "CN",
@@ -74,9 +93,28 @@
       tab_issue: "Выпуск",
       tab_sessions: "Сессии",
       tab_audit: "Аудит",
+      tab_settings: "Настройки",
       clients_title: "Клиенты",
       sessions_title: "Сессии",
       audit_title: "Аудит",
+      settings_title: "Настройки уведомлений",
+      settings_hint: "Сохраняется в /etc/vpnctl/config.yaml. Пустой пароль/токен — оставить текущее значение.",
+      settings_mail: "Почта (SMTP)",
+      settings_telegram: "Telegram",
+      settings_enabled: "Включено",
+      settings_smtp_host: "SMTP-хост",
+      settings_smtp_port: "SMTP-порт",
+      settings_smtp_user: "SMTP-пользователь",
+      settings_smtp_password: "SMTP-пароль",
+      settings_use_tls: "STARTTLS",
+      settings_from_addr: "Адрес отправителя",
+      settings_subject: "Тема письма",
+      settings_bot_token: "Токен бота",
+      settings_chat_id: "Chat id по умолчанию",
+      settings_secret_keep: "Оставьте пустым, чтобы не менять",
+      settings_secret_set: "сохранён — оставьте пустым, чтобы не менять",
+      settings_save: "Сохранить уведомления",
+      settings_saved: "Настройки уведомлений сохранены",
       issue_title: "Выпуск клиента",
       refresh: "Обновить",
       col_cn: "CN",
@@ -279,6 +317,7 @@
     if (name === "clients") loadClients();
     if (name === "sessions") loadSessions();
     if (name === "audit") loadAudit();
+    if (name === "settings") loadSettings();
   }
 
   async function loadClients() {
@@ -415,6 +454,36 @@
     }
   }
 
+  function secretPlaceholder(isSet) {
+    return isSet ? t("settings_secret_set") : t("settings_secret_keep");
+  }
+
+  async function loadSettings() {
+    const form = $("#settings-form");
+    if (!form) return;
+    try {
+      const data = await api("/api/v1/settings/notify");
+      const mail = data.mail || {};
+      const tg = data.telegram || {};
+      form.mail_enabled.checked = Boolean(mail.enabled);
+      form.smtp_host.value = mail.smtp_host || "";
+      form.smtp_port.value = mail.smtp_port != null ? mail.smtp_port : 25;
+      form.smtp_user.value = mail.smtp_user || "";
+      form.smtp_password.value = "";
+      form.smtp_password.placeholder = secretPlaceholder(mail.smtp_password_set);
+      form.use_tls.checked = Boolean(mail.use_tls);
+      form.from_addr.value = mail.from_addr || "";
+      form.subject.value = mail.subject || "";
+      form.tg_enabled.checked = Boolean(tg.enabled);
+      form.bot_token.value = "";
+      form.bot_token.placeholder = secretPlaceholder(tg.bot_token_set);
+      form.chat_id.value = tg.chat_id || "";
+      showStatus("");
+    } catch (err) {
+      showStatus(err.message, "error");
+    }
+  }
+
   function button(label, cls, onClick) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -470,11 +539,46 @@
     if (tab === "clients") loadClients();
     else if (tab === "sessions") loadSessions();
     else if (tab === "audit") loadAudit();
+    else if (tab === "settings") loadSettings();
   });
 
   $("#refresh-clients").addEventListener("click", loadClients);
   $("#refresh-sessions").addEventListener("click", loadSessions);
   $("#refresh-audit").addEventListener("click", loadAudit);
+  $("#refresh-settings").addEventListener("click", loadSettings);
+
+  $("#settings-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const form = ev.target;
+    const body = {
+      mail: {
+        enabled: Boolean(form.mail_enabled.checked),
+        smtp_host: String(form.smtp_host.value || "").trim(),
+        smtp_port: Number(form.smtp_port.value || 25),
+        smtp_user: String(form.smtp_user.value || "").trim(),
+        smtp_password: String(form.smtp_password.value || ""),
+        use_tls: Boolean(form.use_tls.checked),
+        from_addr: String(form.from_addr.value || "").trim(),
+        subject: String(form.subject.value || "").trim(),
+      },
+      telegram: {
+        enabled: Boolean(form.tg_enabled.checked),
+        bot_token: String(form.bot_token.value || ""),
+        chat_id: String(form.chat_id.value || "").trim(),
+      },
+    };
+    try {
+      await api("/api/v1/settings/notify", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      showStatus(t("settings_saved"), "ok");
+      await loadSettings();
+    } catch (err) {
+      showStatus(err.message, "error");
+    }
+  });
 
   $("#issue-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();

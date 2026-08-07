@@ -71,6 +71,28 @@ class DeliverBody(BaseModel):
     telegram_chat_id: str = ""
 
 
+class MailSettingsBody(BaseModel):
+    enabled: bool = False
+    smtp_host: str = "localhost"
+    smtp_port: int = Field(25, ge=1, le=65535)
+    smtp_user: str = ""
+    smtp_password: str = ""
+    use_tls: bool = False
+    from_addr: str = ""
+    subject: str = "Your OpenVPN profile"
+
+
+class TelegramSettingsBody(BaseModel):
+    enabled: bool = False
+    bot_token: str = ""
+    chat_id: str = ""
+
+
+class NotifySettingsBody(BaseModel):
+    mail: MailSettingsBody | None = None
+    telegram: TelegramSettingsBody | None = None
+
+
 def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
     cfg = cfg or load_config()
     service = VpnctlService(cfg)
@@ -180,6 +202,25 @@ def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
         _: str = Depends(auth),
     ) -> list[dict[str, Any]]:
         return service.audit(limit=limit)
+
+    @app.get("/api/v1/settings/notify")
+    def get_notify_settings(_: str = Depends(auth)) -> dict[str, Any]:
+        return service.get_notify_settings()
+
+    @app.put("/api/v1/settings/notify")
+    def put_notify_settings(
+        body: NotifySettingsBody,
+        _: str = Depends(auth),
+    ) -> dict[str, Any]:
+        try:
+            return service.update_notify_settings(
+                mail=body.mail.model_dump() if body.mail is not None else None,
+                telegram=(
+                    body.telegram.model_dump() if body.telegram is not None else None
+                ),
+            )
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     if WEB_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")

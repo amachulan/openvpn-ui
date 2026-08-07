@@ -43,6 +43,7 @@
     <button type="button" class="tab" data-tab="issue" data-i18n="tab_issue">Issue</button>
     <button type="button" class="tab" data-tab="sessions" data-i18n="tab_sessions">Sessions</button>
     <button type="button" class="tab" data-tab="audit" data-i18n="tab_audit">Audit</button>
+    <button type="button" class="tab" data-tab="settings" data-i18n="tab_settings">Settings</button>
   </nav>
 
   <main>
@@ -126,6 +127,36 @@
           <tbody id="audit-body"></tbody>
         </table>
       </div>
+    </section>
+
+    <section id="panel-settings" class="panel">
+      <div class="panel-head">
+        <h2 data-i18n="settings_title">Notification settings</h2>
+        <button type="button" id="refresh-settings" class="secondary" data-i18n="refresh">Refresh</button>
+      </div>
+      <p class="hint" data-i18n="settings_hint">Saved to /etc/vpnctl/config.yaml. Leave password/token blank to keep the current value.</p>
+      <form id="settings-form" class="settings-grid">
+        <fieldset class="form">
+          <legend data-i18n="settings_mail">Email (SMTP)</legend>
+          <label class="check"><input name="mail_enabled" type="checkbox" /> <span data-i18n="settings_enabled">Enabled</span></label>
+          <label><span data-i18n="settings_smtp_host">SMTP host</span> <input name="smtp_host" autocomplete="off" /></label>
+          <label><span data-i18n="settings_smtp_port">SMTP port</span> <input name="smtp_port" type="number" min="1" max="65535" /></label>
+          <label><span data-i18n="settings_smtp_user">SMTP user</span> <input name="smtp_user" autocomplete="off" /></label>
+          <label><span data-i18n="settings_smtp_password">SMTP password</span> <input name="smtp_password" type="password" autocomplete="new-password" data-i18n-placeholder="settings_secret_keep" placeholder="Leave blank to keep" /></label>
+          <label class="check"><input name="use_tls" type="checkbox" /> <span data-i18n="settings_use_tls">STARTTLS</span></label>
+          <label><span data-i18n="settings_from_addr">From address</span> <input name="from_addr" type="email" autocomplete="off" /></label>
+          <label><span data-i18n="settings_subject">Subject</span> <input name="subject" autocomplete="off" /></label>
+        </fieldset>
+        <fieldset class="form">
+          <legend data-i18n="settings_telegram">Telegram</legend>
+          <label class="check"><input name="tg_enabled" type="checkbox" /> <span data-i18n="settings_enabled">Enabled</span></label>
+          <label><span data-i18n="settings_bot_token">Bot token</span> <input name="bot_token" type="password" autocomplete="new-password" data-i18n-placeholder="settings_secret_keep" placeholder="Leave blank to keep" /></label>
+          <label><span data-i18n="settings_chat_id">Default chat id</span> <input name="chat_id" autocomplete="off" /></label>
+        </fieldset>
+        <div class="settings-actions">
+          <button type="submit" data-i18n="settings_save">Save notifications</button>
+        </div>
+      </form>
     </section>
   </main>
 

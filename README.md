@@ -65,6 +65,8 @@ Default bind is `0.0.0.0:8080`. For VPN-only access set `api.allow_from_vpn: tru
 | POST | `/api/v1/sessions/disconnect` | Kick session |
 | GET | `/api/v1/expiry` | Certs nearing expiry |
 | GET | `/api/v1/audit` | Audit events |
+| GET | `/api/v1/settings/notify` | Mail/Telegram settings (secrets redacted) |
+| PUT | `/api/v1/settings/notify` | Update mail/Telegram (persists to config.yaml) |
 
 Auth: `Authorization: Bearer <token>` or `X-API-Token`.
 
