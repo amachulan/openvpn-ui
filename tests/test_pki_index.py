@@ -1,5 +1,8 @@
-from vpnctl.pki import parse_index_txt, validate_cn, PkiError
+from pathlib import Path
+
 import pytest
+
+from vpnctl.pki import PkiError, find_existing_ovpn, parse_index_txt, validate_cn
 
 
 INDEX = """\
@@ -17,9 +20,13 @@ def test_parse_index_txt():
     assert certs["carol"].status == "valid"
 
 
-def test_find_existing_ovpn(tmp_path: Path):
-    from vpnctl.pki import find_existing_ovpn
+def test_validate_cn():
+    assert validate_cn("alice-1") == "alice-1"
+    with pytest.raises(PkiError):
+        validate_cn("bad name")
 
+
+def test_find_existing_ovpn(tmp_path: Path):
     out = tmp_path / "clients"
     out.mkdir()
     assert find_existing_ovpn("alice", out) is None
