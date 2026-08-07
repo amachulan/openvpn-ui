@@ -34,11 +34,11 @@ class VpnctlService:
         status_path = resolve_status_log_path(self.cfg)
         mgmt = resolve_management(self.cfg)
         api = self.cfg.get("api") or {}
-        host = str(api.get("host") or "127.0.0.1")
+        host = str(api.get("host") or "0.0.0.0")
         allow_nets = [str(n) for n in resolve_allow_networks(self.cfg)]
         return {
             "ok": True,
-            "version": "0.1.1",
+            "version": "0.1.2",
             "config_path": self.cfg.get("_config_path"),
             "easy_rsa_dir": str(easy),
             "index_txt": idx.is_file(),

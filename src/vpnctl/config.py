@@ -27,8 +27,9 @@ def default_config() -> dict[str, Any]:
             "timeout_seconds": 15,
         },
         "api": {
-            # 127.0.0.1 = local only; 0.0.0.0 = all interfaces; or a specific IP.
-            "host": "127.0.0.1",
+            # 0.0.0.0 = all interfaces (UI reachable over VPN/LAN/public IP).
+            # Restrict with allow_from / allow_from_vpn when exposing beyond localhost.
+            "host": "0.0.0.0",
             "port": 8080,
             "token": "change-me",
             # Extra CIDRs allowed to reach the UI/API (empty = no IP filter).

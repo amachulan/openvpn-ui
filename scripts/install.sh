@@ -8,7 +8,7 @@ PYTHON="${VPNCTL_PYTHON:-python3}"
 export PIP_DEFAULT_TIMEOUT="${PIP_DEFAULT_TIMEOUT:-60}"
 PIP_INDEX="${VPNCTL_PIP_INDEX:-}"
 UPGRADE_PIP="${VPNCTL_UPGRADE_PIP:-0}"
-INSTALL_SH_REV="2026-08-07c"
+INSTALL_SH_REV="2026-08-07d"
 
 PIP_MIRRORS=(
   "https://pypi.org/simple"
@@ -123,7 +123,9 @@ systemctl daemon-reload
 systemctl enable --now vpnctl
 
 echo
-echo "vpnctl is running on http://127.0.0.1:8080/"
-echo "API token is in /etc/vpnctl/config.yaml (api.token)."
-echo "Pip index used: ${PIP_INDEX_URL}"
-echo "To expose over VPN, set api.host / allow_from_vpn in that file and restart."
+TOKEN="$(awk '/^[[:space:]]*token:/{print $2; exit}' /etc/vpnctl/config.yaml 2>/dev/null || true)"
+echo "vpnctl installed and started."
+echo "  UI:    http://SERVER_IP:8080/"
+echo "  Token: ${TOKEN:-see /etc/vpnctl/config.yaml (api.token)}"
+echo "  Config: /etc/vpnctl/config.yaml"
+echo "Optional hardening: set api.allow_from_vpn: true (VPN clients only), then: systemctl restart vpnctl"

@@ -47,7 +47,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         os.environ["VPNCTL_CONFIG"] = str(Path(args.config))
     cfg = load_config(Path(args.config) if args.config else None)
     api = cfg.get("api") or {}
-    host = args.host or str(api.get("host") or "127.0.0.1")
+    host = args.host or str(api.get("host") or "0.0.0.0")
     port = int(args.port or api.get("port") or 8080)
     allow = resolve_allow_networks(cfg)
     if not is_loopback_bind(host) and not allow:
@@ -130,10 +130,7 @@ def _cmd_install(args: argparse.Namespace) -> int:
             else:
                 unit_dst.write_text(unit_text, encoding="utf-8")
                 print(f"installed {unit_dst}")
-                print("Run: systemctl daemon-reload && systemctl enable --now vpnctl")
 
-    print("Next: ensure OpenVPN was installed with angristan/openvpn-install")
-    print(f"Then: VPNCTL_CONFIG={config_path} vpnctl serve")
     return 0
 
 

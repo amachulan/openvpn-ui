@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vpnctl"
-version = "0.1.1"
+version = "0.1.2"
 description = "Web UI/API for OpenVPN Community servers (pairs with angristan/openvpn-install)"
 readme = "README.md"
 license = { text = "MIT" }

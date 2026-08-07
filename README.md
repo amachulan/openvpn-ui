@@ -11,7 +11,7 @@ Built to sit on top of servers installed with [angristan/openvpn-install](https:
 - Revoke + publish CRL
 - Download profile
 - Online sessions (status log / management) + disconnect
-- Token-auth API on loopback by default
+- Token-auth API (binds `0.0.0.0` by default)
 - Labels / notes, audit log, expiry warnings
 - Optional email / Telegram delivery of `.ovpn`
 
@@ -24,7 +24,7 @@ Built to sit on top of servers installed with [angristan/openvpn-install](https:
 curl -fsSL https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh | sudo bash
 ```
 
-3. Open `http://127.0.0.1:8080/`, paste the API token from `/etc/vpnctl/config.yaml`.
+3. Open `http://SERVER_IP:8080/`, paste the API token printed by the installer (also in `/etc/vpnctl/config.yaml`).
 
 See [docs/install.md](docs/install.md) for details.
 
@@ -40,7 +40,7 @@ VPNCTL_CONFIG=./config/vpnctl.yaml.example vpnctl serve --host 127.0.0.1 --port 
 
 Copy and edit the example config before real use; set a strong `api.token`.
 
-Default bind is `127.0.0.1`. To reach the UI over OpenVPN / LAN, set `api.host: 0.0.0.0` and preferably `api.allow_from_vpn: true` (see [docs/install.md](docs/install.md)).
+Default bind is `0.0.0.0:8080`. For VPN-only access set `api.allow_from_vpn: true` (see [docs/install.md](docs/install.md)).
 
 ## API (auth required except health)
 

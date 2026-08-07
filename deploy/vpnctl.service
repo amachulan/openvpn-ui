@@ -11,8 +11,6 @@ Environment=VPNCTL_CONFIG=/etc/vpnctl/config.yaml
 ExecStart=/usr/local/bin/vpnctl serve --config /etc/vpnctl/config.yaml
 Restart=on-failure
 RestartSec=3
-# Bind address comes from /etc/vpnctl/config.yaml (api.host).
-# For VPN admin UI use host: 0.0.0.0 and allow_from_vpn: true.
 
 [Install]
 WantedBy=multi-user.target
