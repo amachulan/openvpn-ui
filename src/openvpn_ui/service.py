@@ -376,6 +376,15 @@ class OpenVpnUiService:
                 proto = normalize_listen_proto(instance_id, settings.proto)
         return proto, port, conf_path
 
+    def _client_endpoint(self, instance_id: str) -> tuple[str, int, str | None]:
+        """Proto/port/host written into client .ovpn (NAT-aware)."""
+        inst = get_instance(self.cfg, instance_id)
+        proto, listen_port, _ = self._instance_listen(instance_id)
+        host = str(inst.get("external_host") or "").strip() or None
+        ep = inst.get("external_port")
+        port = int(ep) if ep not in (None, "", 0, "0") else listen_port
+        return proto, port, host
+
     def _build_client_profiles(self, cn: str) -> list[Path]:
         certs = {c.cn: c for c in pki.list_certificates(self.easy_rsa_dir)}
         cert = certs.get(cn)
@@ -391,7 +400,7 @@ class OpenVpnUiService:
         if not primary_conf.is_file():
             primary_conf = path_from_cfg(self.cfg, "server_conf")
         for iid in enabled:
-            proto, port, _ = self._instance_listen(iid)
+            proto, port, host = self._client_endpoint(iid)
             paths.append(
                 pki.build_ovpn(
                     easy_rsa_dir=self.easy_rsa_dir,
@@ -402,6 +411,7 @@ class OpenVpnUiService:
                     output_dir=path_from_cfg(self.cfg, "client_output_dir"),
                     proto=proto,
                     port=port,
+                    host=host,
                     filename_suffix=iid,
                 )
             )
@@ -431,6 +441,8 @@ class OpenVpnUiService:
                 "conf": str(conf_path),
                 "service": str(row.get("service") or ""),
                 "port": int(row.get("port") or 0),
+                "external_host": str(row.get("external_host") or ""),
+                "external_port": row.get("external_port"),
                 "service_status": self._instance_unit_status(str(row.get("service") or "")),
                 "settings": None,
                 "conf_exists": conf_path.is_file(),
@@ -464,29 +476,55 @@ class OpenVpnUiService:
         inst = get_instance(self.cfg, instance_id)
         if not inst.get("enabled"):
             raise server_conf.ServerConfError(f"{instance_id} instance is disabled")
+        patch = dict(patch)
+        endpoint_keys: list[str] = []
+        instances = resolve_instances(self.cfg)
+        if "external_host" in patch:
+            instances[instance_id]["external_host"] = str(
+                patch.pop("external_host") or ""
+            ).strip()
+            endpoint_keys.append("external_host")
+        if "external_port" in patch:
+            raw_ep = patch.pop("external_port")
+            if raw_ep in (None, "", 0, "0"):
+                instances[instance_id]["external_port"] = None
+            else:
+                ep = int(raw_ep)
+                if ep < 1 or ep > 65535:
+                    raise server_conf.ServerConfError("external_port must be 1–65535")
+                instances[instance_id]["external_port"] = ep
+            endpoint_keys.append("external_port")
+
         conf_path = Path(str(inst["conf"]))
         text, _ = server_conf.read_server_conf(conf_path)
-        clean = server_conf.validate_settings_patch(patch)
-        if not clean:
+        clean = server_conf.validate_settings_patch(patch) if patch else {}
+        if not clean and not endpoint_keys:
             raise server_conf.ServerConfError("no settings to update")
-        # Keep instance family: force proto family if proto set.
-        if "proto" in clean:
-            clean["proto"] = normalize_listen_proto(instance_id, clean["proto"])
-        new_text = server_conf.apply_settings_patch(text, clean)
-        backup = server_conf.write_server_conf(conf_path, new_text, self._backup_dir())
-        # Sync shared client template only for primary.
+        backup = None
+        if clean:
+            # Keep instance family: force proto family if proto set.
+            if "proto" in clean:
+                clean["proto"] = normalize_listen_proto(instance_id, clean["proto"])
+            new_text = server_conf.apply_settings_patch(text, clean)
+            backup = server_conf.write_server_conf(conf_path, new_text, self._backup_dir())
+            if "port" in clean:
+                instances[instance_id]["port"] = int(clean["port"])
+
+        if clean or endpoint_keys:
+            persist_instances(self.cfg, instances)
+
+        # Sync shared client template only for primary (client-facing endpoint).
         template_changed = False
         if inst.get("primary"):
+            client_proto, client_port, client_host = self._client_endpoint(instance_id)
             template_changed = server_conf.sync_client_template(
                 path_from_cfg(self.cfg, "client_template"),
-                port=clean.get("port"),
-                proto=clean.get("proto"),
+                port=client_port,
+                proto=client_proto if "proto" in clean else None,
+                host=client_host,
             )
-        instances = resolve_instances(self.cfg)
-        if "port" in clean:
-            instances[instance_id]["port"] = int(clean["port"])
-            persist_instances(self.cfg, instances)
-        detail = f"{instance_id}:" + ",".join(sorted(clean.keys()))
+        detail_keys = sorted(set(clean.keys()) | set(endpoint_keys))
+        detail = f"{instance_id}:" + ",".join(detail_keys)
         if template_changed:
             detail += ";template"
         self.catalog.add_event("server_conf_update", cn="", detail=detail)

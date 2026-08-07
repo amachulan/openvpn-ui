@@ -23,12 +23,17 @@ openvpn:
       service: openvpn-server@server
       port: 1194
       primary: true
+      # Client .ovpn remote (when host is behind NAT). Empty = template host / listen port.
+      external_host: ""
+      external_port: null
     tcp:
       enabled: false
       conf: /etc/openvpn/server/server-tcp.conf
       service: openvpn-server@server-tcp
       port: 443
       primary: false
+      external_host: ""
+      external_port: null
 
 # Management interface: unix socket (angristan default) or TCP.
 openvpn_management:

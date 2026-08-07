@@ -9,8 +9,8 @@ Built to sit on top of servers installed with [angristan/openvpn-install](https:
 - List certificates from Easy-RSA `index.txt`
 - Issue / renew / revoke clients and build inline `.ovpn`
 - Online sessions (status log / management) + disconnect
-- **Server admin:** dual UDP/TCP instances (shared PKI/CCD/subnet), structured settings, raw conf, backups, restart
-- Issue / renew builds `{cn}-udp.ovpn` / `{cn}-tcp.ovpn` when both instances are enabled
+- **Server admin:** dual UDP/TCP instances (shared PKI/CCD/subnet), NAT external host/port for client `remote`, structured settings, raw conf, backups, restart
+- Issue / renew / download builds `{cn}-udp.ovpn` / `{cn}-tcp.ovpn` when both instances are enabled
 - Token-auth API (binds `0.0.0.0` by default)
 - Labels / notes, audit log, expiry warnings
 - Optional email / Telegram delivery of `.ovpn` (Settings tab)

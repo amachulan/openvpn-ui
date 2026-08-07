@@ -403,6 +403,7 @@ def build_ovpn(
     output_dir: Path,
     proto: str | None = None,
     port: int | None = None,
+    host: str | None = None,
     filename_suffix: str | None = None,
 ) -> Path:
     from .server_conf import apply_client_endpoint_overrides
@@ -419,9 +420,9 @@ def build_ovpn(
         raise PkiError(f"CA cert not found: {ca_file}")
 
     header = client_template.read_text(encoding="utf-8", errors="replace").rstrip()
-    if proto or port is not None:
+    if proto or port is not None or (host or "").strip():
         header = apply_client_endpoint_overrides(
-            header + "\n", proto=proto, port=port
+            header + "\n", proto=proto, port=port, host=host
         ).rstrip()
 
     parts: list[str] = [

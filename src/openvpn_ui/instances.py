@@ -46,6 +46,7 @@ def default_instances(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     legacy_unit = str((cfg.get("openvpn") or {}).get("service") or "").strip()
     primary_unit = legacy_unit or "openvpn-server@server"
 
+    empty_nat = {"external_host": "", "external_port": None}
     if primary_family == "tcp":
         return {
             "tcp": {
@@ -54,6 +55,7 @@ def default_instances(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
                 "service": primary_unit,
                 "port": 443,
                 "primary": True,
+                **empty_nat,
             },
             "udp": {
                 "enabled": False,
@@ -61,6 +63,7 @@ def default_instances(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
                 "service": "openvpn-server@server-udp",
                 "port": 1194,
                 "primary": False,
+                **empty_nat,
             },
         }
     return {
@@ -70,6 +73,7 @@ def default_instances(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "service": primary_unit,
             "port": 1194,
             "primary": True,
+            **empty_nat,
         },
         "tcp": {
             "enabled": False,
@@ -77,6 +81,7 @@ def default_instances(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "service": "openvpn-server@server-tcp",
             "port": 443,
             "primary": False,
+            **empty_nat,
         },
     }
 
@@ -90,9 +95,11 @@ def resolve_instances(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
         row = dict(base[iid])
         user = overlay.get(iid) or {}
         if isinstance(user, dict):
-            for key in ("enabled", "conf", "service", "port", "primary"):
+            for key in ("enabled", "conf", "service", "port", "primary", "external_host"):
                 if key in user and user[key] is not None:
                     row[key] = user[key]
+            if "external_port" in user:
+                row["external_port"] = user["external_port"]
         conf_path = Path(str(row["conf"]))
         # If secondary conf exists on disk, treat as enabled unless explicitly false in overlay.
         if iid in overlay and "enabled" in (overlay.get(iid) or {}):
@@ -102,6 +109,12 @@ def resolve_instances(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
         else:
             row["enabled"] = conf_path.is_file()
         row["port"] = int(row.get("port") or (443 if iid == "tcp" else 1194))
+        row["external_host"] = str(row.get("external_host") or "").strip()
+        ep = row.get("external_port")
+        if ep in (None, "", 0, "0"):
+            row["external_port"] = None
+        else:
+            row["external_port"] = int(ep)
         row["id"] = iid
         out[iid] = row
     # Ensure exactly one primary flag.
@@ -134,12 +147,15 @@ def persist_instances(cfg: dict[str, Any], instances: dict[str, dict[str, Any]])
     clean: dict[str, Any] = {}
     for iid in INSTANCE_IDS:
         row = instances.get(iid) or {}
+        ep = row.get("external_port")
         clean[iid] = {
             "enabled": bool(row.get("enabled")),
             "conf": str(row.get("conf") or ""),
             "service": str(row.get("service") or ""),
             "port": int(row.get("port") or (443 if iid == "tcp" else 1194)),
             "primary": bool(row.get("primary")),
+            "external_host": str(row.get("external_host") or "").strip(),
+            "external_port": None if ep in (None, "", 0, "0") else int(ep),
         }
     openvpn["instances"] = clean
     if "service" not in openvpn:

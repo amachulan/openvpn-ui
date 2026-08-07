@@ -60,6 +60,8 @@ The **Server** tab shows **UDP** and **TCP** instance cards. The primary instanc
 
 Clients get separate profiles: `{cn}-udp.ovpn` and `{cn}-tcp.ovpn`. Do not connect both at once with the same CN unless `duplicate-cn` is on. openvpn-ui does **not** open the firewall for the secondary port — allow it yourself (e.g. TCP 443).
 
+If the OpenVPN host is behind NAT, set **External host / IP** and **External port** on each instance card. Those values go into the client `.ovpn` `remote` line; **Listen port** stays what OpenVPN binds locally. Empty external fields keep the host from `client-template.txt` and the listen port.
+
 Backups live under `/var/lib/openvpn-ui/backups/` (prefixed by conf basename).
 
 Example `openvpn.instances` (written automatically when you enable/disable in the UI):

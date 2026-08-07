@@ -409,12 +409,15 @@ def sync_client_template(
     *,
     port: int | None = None,
     proto: str | None = None,
+    host: str | None = None,
 ) -> bool:
-    """Update proto / remote port in client-template.txt. Returns True if changed."""
+    """Update proto / remote host+port in client-template.txt. Returns True if changed."""
     if not template_path.is_file():
         return False
     text = template_path.read_text(encoding="utf-8", errors="replace")
-    new_text = apply_client_endpoint_overrides(text, proto=proto, port=port)
+    new_text = apply_client_endpoint_overrides(
+        text, proto=proto, port=port, host=host
+    )
     if new_text == text:
         return False
     template_path.write_text(new_text, encoding="utf-8")
@@ -426,8 +429,10 @@ def apply_client_endpoint_overrides(
     *,
     proto: str | None = None,
     port: int | None = None,
+    host: str | None = None,
 ) -> str:
     """Return client template / profile header with proto/remote overridden."""
+    host = (host or "").strip() or None
     lines = text.splitlines()
     out: list[str] = []
     for line in lines:
@@ -436,9 +441,14 @@ def apply_client_endpoint_overrides(
             out.append(f"proto {proto}")
             continue
         m = REMOTE_RE.match(stripped)
-        if m and port is not None:
-            host = m.group(1)
-            out.append(f"remote {host} {port}")
+        if m and (port is not None or host is not None):
+            use_host = host or m.group(1)
+            if port is not None:
+                out.append(f"remote {use_host} {int(port)}")
+            elif m.group(2):
+                out.append(f"remote {use_host} {m.group(2)}")
+            else:
+                out.append(f"remote {use_host}")
             continue
         out.append(line)
     ending = "\n" if text.endswith("\n") else ""

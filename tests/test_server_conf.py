@@ -131,3 +131,12 @@ def test_apply_client_endpoint_overrides():
     out = apply_client_endpoint_overrides(text, proto="tcp", port=443)
     assert "proto tcp" in out
     assert "remote vpn.example.com 443" in out
+
+
+def test_apply_client_endpoint_overrides_host():
+    text = "client\nproto udp\nremote 10.0.0.5 1194\ndev tun\n"
+    out = apply_client_endpoint_overrides(
+        text, proto="udp", port=1195, host="vpn.example.com"
+    )
+    assert "remote vpn.example.com 1195" in out
+    assert "10.0.0.5" not in out

@@ -34,13 +34,15 @@ def test_build_ovpn_proto_port_override(tmp_path: Path):
         cn="alice",
         output_dir=out_dir,
         proto="tcp",
-        port=443,
+        port=444,
+        host="1.2.3.4",
         filename_suffix="tcp",
     )
     assert path.name == "alice-tcp.ovpn"
     text = path.read_text(encoding="utf-8")
     assert "proto tcp" in text
-    assert "remote vpn.example.com 443" in text
+    assert "remote 1.2.3.4 444" in text
+    assert "vpn.example.com" not in text
     assert "<ca>" in text
     assert "<cert>" in text
     assert "<key>" in text

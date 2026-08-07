@@ -102,6 +102,8 @@ class RenewBody(BaseModel):
 class ServerSettingsBody(BaseModel):
     port: int | None = Field(None, ge=1, le=65535)
     proto: str | None = None
+    external_host: str | None = None
+    external_port: int | None = Field(None, ge=0, le=65535)
     duplicate_cn: bool | None = None
     client_to_client: bool | None = None
     redirect_gateway: bool | None = None

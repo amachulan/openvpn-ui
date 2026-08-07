@@ -42,8 +42,11 @@
       server_dual_hint: "UDP and TCP share PKI/CCD and the same VPN subnet. Do not connect both profiles at once with one CN. Open the firewall for the secondary port.",
       server_network: "Network & policy",
       server_crypto: "Crypto",
-      server_port: "Port",
+      server_port: "Listen port",
       server_proto: "Protocol",
+      server_external_host: "External host / IP (NAT)",
+      server_external_port: "External port (NAT)",
+      server_external_hint: "Written into client .ovpn remote. Leave empty to use template host and listen port.",
       server_duplicate_cn: "Allow same cert on multiple devices",
       server_client_to_client: "Client-to-client",
       server_redirect_gateway: "Route internet through VPN",
@@ -169,8 +172,11 @@
       server_dual_hint: "UDP и TCP делят PKI/CCD и одну VPN-подсеть. Не подключайте оба профиля сразу с одним CN. Откройте firewall на вторичный порт.",
       server_network: "Сеть и политика",
       server_crypto: "Крипто",
-      server_port: "Порт",
+      server_port: "Порт прослушивания",
       server_proto: "Протокол",
+      server_external_host: "Внешний хост / IP (NAT)",
+      server_external_port: "Внешний порт (NAT)",
+      server_external_hint: "Пишется в remote клиентского .ovpn. Пусто = хост из шаблона и порт прослушивания.",
       server_duplicate_cn: "Один сертификат на нескольких устройствах",
       server_client_to_client: "Клиент-клиент",
       server_redirect_gateway: "Интернет через VPN",
@@ -664,6 +670,9 @@
         <label><span>${escapeHtml(t("server_proto"))}</span>
           <select name="proto">${protoOptions(iid, selectedProto)}</select>
         </label>
+        <label><span>${escapeHtml(t("server_external_host"))}</span> <input name="external_host" type="text" autocomplete="off" placeholder="vpn.example.com" value="${escapeHtml(inst.external_host || "")}" /></label>
+        <label><span>${escapeHtml(t("server_external_port"))}</span> <input name="external_port" type="number" min="1" max="65535" placeholder="${escapeHtml(String(s.port != null ? s.port : inst.port || ""))}" value="${escapeHtml(inst.external_port != null ? inst.external_port : "")}" /></label>
+        <p class="hint muted">${escapeHtml(t("server_external_hint"))}</p>
         <label class="check"><input name="duplicate_cn" type="checkbox" ${s.duplicate_cn ? "checked" : ""} /> <span>${escapeHtml(t("server_duplicate_cn"))}</span></label>
         <label class="check"><input name="client_to_client" type="checkbox" ${s.client_to_client ? "checked" : ""} /> <span>${escapeHtml(t("server_client_to_client"))}</span></label>
         <label class="check"><input name="redirect_gateway" type="checkbox" ${s.redirect_gateway ? "checked" : ""} /> <span>${escapeHtml(t("server_redirect_gateway"))}</span></label>
@@ -691,9 +700,12 @@
     const settingsForm = card.querySelector("form[data-role='settings']");
     const saveBtn = button(t("server_save"), "", async () => {
       const fd = new FormData(settingsForm);
+      const externalPortRaw = String(fd.get("external_port") || "").trim();
       const body = {
         port: Number(fd.get("port") || 0) || null,
         proto: String(fd.get("proto") || "").trim(),
+        external_host: String(fd.get("external_host") || "").trim(),
+        external_port: externalPortRaw ? Number(externalPortRaw) : null,
         duplicate_cn: Boolean(fd.get("duplicate_cn")),
         client_to_client: Boolean(fd.get("client_to_client")),
         redirect_gateway: Boolean(fd.get("redirect_gateway")),
