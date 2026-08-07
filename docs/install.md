@@ -15,6 +15,15 @@ curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/inst
 Re-run anytime to pull latest code, reinstall the package, and restart the service.  
 `/etc/vpnctl/config.yaml` (and your API token) are **kept**.
 
+### Fast upgrade (skip apt / mirror probes)
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" \
+  | sudo env VPNCTL_SKIP_DEPS=1 bash
+```
+
+Or locally: `sudo bash /opt/vpnctl/scripts/install.sh --from-local --skip-deps`
+
 After it finishes, open `http://SERVER_IP:8080/` and paste the printed token.
 
 ### PyPI blocked

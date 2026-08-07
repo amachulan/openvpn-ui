@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Install or upgrade vpnctl. Safe to re-run (idempotent one-liner).
 # Preserves /etc/vpnctl/config.yaml; refreshes code under /opt/vpnctl and restarts the service.
+#
+# Fast re-run (skip apt + mirror probes + setuptools bootstrap):
+#   curl -fsSL ".../install.sh?$(date +%s)" | sudo env VPNCTL_SKIP_DEPS=1 bash
+#   sudo bash /opt/vpnctl/scripts/install.sh --from-local --skip-deps
 set -euo pipefail
 
 REPO_URL="${VPNCTL_REPO_URL:-https://github.com/amachulan/vpnctl.git}"
@@ -10,7 +14,9 @@ export PIP_DEFAULT_TIMEOUT="${PIP_DEFAULT_TIMEOUT:-60}"
 export VPNCTL_INSTALL_DIR="${INSTALL_DIR}"
 PIP_INDEX="${VPNCTL_PIP_INDEX:-}"
 UPGRADE_PIP="${VPNCTL_UPGRADE_PIP:-0}"
-INSTALL_SH_REV="2026-08-07e"
+SKIP_DEPS="${VPNCTL_SKIP_DEPS:-0}"
+INSTALL_SH_REV="2026-08-07f"
+PIP_INDEX_CACHE="${INSTALL_DIR}/.pip-index"
 
 PIP_MIRRORS=(
   "https://pypi.org/simple"
@@ -18,6 +24,15 @@ PIP_MIRRORS=(
   "https://mirrors.aliyun.com/pypi/simple"
   "https://pypi.mirrors.ustc.edu.cn/simple"
 )
+
+FROM_LOCAL=0
+for arg in "$@"; do
+  case "${arg}" in
+    --from-local) FROM_LOCAL=1 ;;
+    --skip-deps) SKIP_DEPS=1 ;;
+  esac
+done
+export VPNCTL_SKIP_DEPS="${SKIP_DEPS}"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Run as root (sudo)." >&2
@@ -36,8 +51,13 @@ if [[ ! -d /etc/openvpn/server/easy-rsa ]]; then
 fi
 
 sync_repo() {
-  apt-get update -y
-  apt-get install -y git curl
+  if [[ "${SKIP_DEPS}" != "1" ]]; then
+    apt-get update -y
+    apt-get install -y git curl
+  elif ! command -v git >/dev/null 2>&1; then
+    echo "git missing; run a full install once without VPNCTL_SKIP_DEPS=1" >&2
+    exit 1
+  fi
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     git -C "${INSTALL_DIR}" fetch --prune origin
     git -C "${INSTALL_DIR}" checkout -B main origin/main
@@ -49,18 +69,35 @@ sync_repo() {
   fi
 }
 
-# curl|bash bootstrap: sync repo, then always re-exec the local script (avoids CDN stale copies).
-if [[ "${1:-}" != "--from-local" ]]; then
+if [[ "${FROM_LOCAL}" != "1" ]]; then
   sync_repo
   echo "Re-exec local installer (${INSTALL_SH_REV} bootstrap) → ${INSTALL_DIR}/scripts/install.sh"
+  if [[ "${SKIP_DEPS}" == "1" ]]; then
+    exec bash "${INSTALL_DIR}/scripts/install.sh" --from-local --skip-deps
+  fi
   exec bash "${INSTALL_DIR}/scripts/install.sh" --from-local
 fi
 
 echo "vpnctl install.sh rev ${INSTALL_SH_REV} (idempotent install/upgrade)"
+if [[ "${SKIP_DEPS}" == "1" ]]; then
+  echo "SKIP_DEPS=1 — skipping apt and mirror probes"
+fi
 
 pick_pip_index() {
   if [[ -n "${PIP_INDEX}" ]]; then
     echo "Using VPNCTL_PIP_INDEX=${PIP_INDEX}"
+    return 0
+  fi
+  if [[ -f "${PIP_INDEX_CACHE}" ]]; then
+    PIP_INDEX="$(tr -d '[:space:]' < "${PIP_INDEX_CACHE}")"
+    if [[ -n "${PIP_INDEX}" ]]; then
+      echo "Using cached pip index: ${PIP_INDEX}"
+      return 0
+    fi
+  fi
+  if [[ "${SKIP_DEPS}" == "1" ]]; then
+    PIP_INDEX="https://pypi.tuna.tsinghua.edu.cn/simple"
+    echo "SKIP_DEPS: defaulting pip index to ${PIP_INDEX}"
     return 0
   fi
   local url
@@ -77,9 +114,10 @@ pick_pip_index() {
   PIP_INDEX="https://pypi.org/simple"
 }
 
-apt-get install -y "${PYTHON}-venv" "${PYTHON}-setuptools" "${PYTHON}-wheel" curl git
+if [[ "${SKIP_DEPS}" != "1" ]]; then
+  apt-get install -y "${PYTHON}-venv" "${PYTHON}-setuptools" "${PYTHON}-wheel" curl git
+fi
 
-# Repo should already be synced by bootstrap; refresh again in case of direct --from-local.
 if [[ -d "${INSTALL_DIR}/.git" ]]; then
   git -C "${INSTALL_DIR}" fetch --prune origin
   git -C "${INSTALL_DIR}" checkout -B main origin/main
@@ -90,8 +128,17 @@ fi
 
 pick_pip_index
 export PIP_INDEX_URL="${PIP_INDEX}"
+printf '%s\n' "${PIP_INDEX}" > "${PIP_INDEX_CACHE}"
 
-"${PYTHON}" -m venv "${INSTALL_DIR}/.venv"
+if [[ ! -x "${INSTALL_DIR}/.venv/bin/python" ]]; then
+  if [[ "${SKIP_DEPS}" == "1" ]]; then
+    echo "venv missing; run a full install once without SKIP_DEPS" >&2
+    exit 1
+  fi
+  "${PYTHON}" -m venv "${INSTALL_DIR}/.venv"
+elif [[ "${SKIP_DEPS}" != "1" ]]; then
+  "${PYTHON}" -m venv "${INSTALL_DIR}/.venv"
+fi
 VENV_PY="${INSTALL_DIR}/.venv/bin/python"
 
 pip_install() {
@@ -113,14 +160,19 @@ pip_install() {
   done
 }
 
-if [[ "${UPGRADE_PIP}" == "1" ]]; then
-  pip_install -U pip setuptools wheel
-else
-  pip_install setuptools wheel
+if [[ "${SKIP_DEPS}" != "1" ]]; then
+  if [[ "${UPGRADE_PIP}" == "1" ]]; then
+    pip_install -U pip setuptools wheel
+  else
+    pip_install setuptools wheel
+  fi
 fi
 
-# Always reinstall package from the synced tree so upgrades pick up new code.
-if pip_install --upgrade --force-reinstall --no-build-isolation "${INSTALL_DIR}"; then
+# Reinstall package from the synced tree. With SKIP_DEPS, prefer --no-deps (code-only);
+# fall back to full resolve if that fails (e.g. first run / missing wheels).
+if [[ "${SKIP_DEPS}" == "1" ]] && pip_install --upgrade --force-reinstall --no-deps --no-build-isolation "${INSTALL_DIR}"; then
+  :
+elif pip_install --upgrade --force-reinstall --no-build-isolation "${INSTALL_DIR}"; then
   :
 else
   echo "Retrying with build isolation..." >&2
@@ -138,7 +190,6 @@ systemctl daemon-reload
 systemctl enable vpnctl
 systemctl restart vpnctl
 
-# Give the service a moment, then show status.
 sleep 1
 if systemctl is-active --quiet vpnctl; then
   STATUS_LINE="active"
@@ -160,3 +211,6 @@ echo "  UI:     http://${HOST_IP}:8080/"
 echo "  Token:  ${TOKEN:-see /etc/vpnctl/config.yaml}"
 echo "  Config: /etc/vpnctl/config.yaml (preserved across upgrades)"
 echo "  Code:   ${INSTALL_DIR}"
+if [[ "${SKIP_DEPS}" == "1" ]]; then
+  echo "  Mode:   skip-deps"
+fi

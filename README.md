@@ -24,6 +24,12 @@ Built to sit on top of servers installed with [angristan/openvpn-install](https:
 curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" | sudo bash
 ```
 
+Fast upgrades (skip apt + mirror checks):
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" | sudo env VPNCTL_SKIP_DEPS=1 bash
+```
+
 3. Open `http://SERVER_IP:8080/`, paste the API token printed by the installer.
 
 Config and token in `/etc/vpnctl/config.yaml` survive upgrades.
