@@ -795,7 +795,7 @@
     grid.innerHTML = `<p>${escapeHtml(t("loading"))}</p>`;
     try {
       const data = await api("/api/v1/server");
-      if (hint && data.hint) hint.textContent = data.hint;
+      if (hint) hint.textContent = t("server_dual_hint");
       grid.innerHTML = "";
       for (const iid of ["udp", "tcp"]) {
         const inst = (data.instances || {})[iid];
