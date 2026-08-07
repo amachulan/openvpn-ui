@@ -112,6 +112,19 @@
       no_clients: "No client certificates in PKI.",
       no_sessions: "No active sessions.",
       no_events: "No events yet.",
+      audit_action_issue: "Issue client",
+      audit_action_revoke: "Revoke",
+      audit_action_client_renew: "Renew certificate",
+      audit_action_disconnect: "Disconnect session",
+      audit_action_meta_update: "Update client meta",
+      audit_action_deliver_email: "Email delivery",
+      audit_action_deliver_telegram: "Telegram delivery",
+      audit_action_settings_update: "Update notifications",
+      audit_action_server_conf_update: "Update server conf",
+      audit_action_server_enable: "Enable instance",
+      audit_action_server_disable: "Disable instance",
+      audit_action_server_restart: "Restart instance",
+      audit_action_server_restore: "Restore backup",
       download: "Download",
       download_udp: "UDP",
       download_tcp: "TCP",
@@ -242,6 +255,19 @@
       no_clients: "Нет клиентских сертификатов в PKI.",
       no_sessions: "Нет активных сессий.",
       no_events: "Пока нет событий.",
+      audit_action_issue: "Выпуск клиента",
+      audit_action_revoke: "Отзыв",
+      audit_action_client_renew: "Продление сертификата",
+      audit_action_disconnect: "Отключение сессии",
+      audit_action_meta_update: "Обновление метки/заметок",
+      audit_action_deliver_email: "Отправка по email",
+      audit_action_deliver_telegram: "Отправка в Telegram",
+      audit_action_settings_update: "Настройки уведомлений",
+      audit_action_server_conf_update: "Изменение conf сервера",
+      audit_action_server_enable: "Включение инстанса",
+      audit_action_server_disable: "Выключение инстанса",
+      audit_action_server_restart: "Перезапуск инстанса",
+      audit_action_server_restore: "Восстановление бэкапа",
       download: "Скачать",
       download_udp: "UDP",
       download_tcp: "TCP",
@@ -548,6 +574,12 @@
     }
   }
 
+  function auditActionLabel(action) {
+    const key = `audit_action_${String(action || "").trim()}`;
+    const label = t(key);
+    return label === key ? String(action || "") : label;
+  }
+
   async function loadAudit() {
     const tbody = $("#audit-body");
     tbody.innerHTML = `<tr><td colspan="4">${escapeHtml(t("loading"))}</td></tr>`;
@@ -562,7 +594,7 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${escapeHtml(e.ts)}</td>
-          <td>${escapeHtml(e.action)}</td>
+          <td>${escapeHtml(auditActionLabel(e.action))}</td>
           <td>${escapeHtml(e.cn || "")}</td>
           <td>${escapeHtml(e.detail || "")}</td>
         `;
