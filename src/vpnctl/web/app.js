@@ -22,8 +22,18 @@
   async function api(path, options = {}) {
     const headers = Object.assign({}, options.headers || {});
     const token = getToken();
+    if (!token && !path.endsWith("/health")) {
+      throw new Error("Paste API token (from /etc/vpnctl/config.yaml) and click Save");
+    }
     if (token) headers.Authorization = `Bearer ${token}`;
-    const resp = await fetch(path, { ...options, headers });
+    let resp;
+    try {
+      resp = await fetch(path, { ...options, headers });
+    } catch (err) {
+      throw new Error(
+        `Cannot reach API (${err.message}). Check: systemctl status vpnctl; api.host=0.0.0.0; firewall port 8080`
+      );
+    }
     const contentType = resp.headers.get("content-type") || "";
     let body = null;
     if (contentType.includes("application/json")) {

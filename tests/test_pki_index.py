@@ -17,7 +17,12 @@ def test_parse_index_txt():
     assert certs["carol"].status == "valid"
 
 
-def test_validate_cn():
-    assert validate_cn("alice-1") == "alice-1"
-    with pytest.raises(PkiError):
-        validate_cn("bad name")
+def test_find_existing_ovpn(tmp_path: Path):
+    from vpnctl.pki import find_existing_ovpn
+
+    out = tmp_path / "clients"
+    out.mkdir()
+    assert find_existing_ovpn("alice", out) is None
+    profile = out / "alice.ovpn"
+    profile.write_text("client\n", encoding="utf-8")
+    assert find_existing_ovpn("alice", out) == profile

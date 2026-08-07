@@ -257,6 +257,31 @@ def _extract_cert_body(cert_text: str) -> str:
     return "\n".join(out)
 
 
+def find_existing_ovpn(cn: str, output_dir: Path) -> Path | None:
+    """Locate an existing .ovpn (vpnctl output dir or angristan home/root layout)."""
+    cn = validate_cn(cn)
+    candidates = [
+        output_dir / f"{cn}.ovpn",
+        Path("/root") / f"{cn}.ovpn",
+        Path("/etc/openvpn/client") / f"{cn}.ovpn",
+    ]
+    home = Path("/home")
+    if home.is_dir():
+        try:
+            for user_dir in sorted(home.iterdir()):
+                if user_dir.is_dir():
+                    candidates.append(user_dir / f"{cn}.ovpn")
+        except OSError:
+            pass
+    for path in candidates:
+        try:
+            if path.is_file():
+                return path
+        except OSError:
+            continue
+    return None
+
+
 def build_ovpn(
     *,
     easy_rsa_dir: Path,

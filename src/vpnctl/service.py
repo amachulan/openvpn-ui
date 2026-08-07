@@ -188,10 +188,12 @@ class VpnctlService:
 
     def ovpn_path(self, cn: str) -> Path:
         cn = pki.validate_cn(cn)
-        path = path_from_cfg(self.cfg, "client_output_dir") / f"{cn}.ovpn"
-        if path.is_file():
-            return path
-        # Rebuild on demand if cert still valid
+        output_dir = path_from_cfg(self.cfg, "client_output_dir")
+        existing = pki.find_existing_ovpn(cn, output_dir)
+        if existing is not None:
+            return existing
+        # Rebuild on demand if cert still valid (also covers angristan-issued certs
+        # whose .ovpn was deleted from /home but PKI files remain).
         certs = {c.cn: c for c in pki.list_certificates(self.easy_rsa_dir)}
         cert = certs.get(cn)
         if cert is None or cert.status != "valid":
@@ -202,7 +204,7 @@ class VpnctlService:
             server_conf=path_from_cfg(self.cfg, "server_conf"),
             client_template=path_from_cfg(self.cfg, "client_template"),
             cn=cn,
-            output_dir=path_from_cfg(self.cfg, "client_output_dir"),
+            output_dir=output_dir,
         )
 
     def list_sessions(self) -> list[OnlineClient]:
