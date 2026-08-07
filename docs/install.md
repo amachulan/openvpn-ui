@@ -6,29 +6,21 @@
 2. OpenVPN via [angristan/openvpn-install](https://github.com/angristan/openvpn-install).
 3. Python 3.10+.
 
-## Install
+## Install / upgrade (same one-liner)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh | sudo bash
+curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" | sudo bash
 ```
 
-That is enough: package, config, systemd enable/start.
+Re-run anytime to pull latest code, reinstall the package, and restart the service.  
+`/etc/vpnctl/config.yaml` (and your API token) are **kept**.
 
-Open `http://SERVER_IP:8080/`, paste the token printed at the end (also in `/etc/vpnctl/config.yaml`).
+After it finishes, open `http://SERVER_IP:8080/` and paste the printed token.
 
-If the one-liner fails, use the local copy:
-
-```bash
-sudo git -C /opt/vpnctl pull --ff-only
-sudo bash /opt/vpnctl/scripts/install.sh --from-local
-```
-
-### PyPI blocked / timeouts
-
-`install.sh` auto-probes mirrors. Force one if needed:
+### PyPI blocked
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh \
+curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" \
   | sudo env VPNCTL_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple bash
 ```
 
@@ -38,9 +30,9 @@ File: `/etc/vpnctl/config.yaml`
 
 Defaults:
 
-- `api.host: 0.0.0.0` (reachable over VPN / LAN / public IP)
+- `api.host: 0.0.0.0`
 - `api.port: 8080`
-- strong `api.token` generated on install
+- `api.token` generated once on first install
 
 Optional hardening (VPN clients only):
 
@@ -51,9 +43,7 @@ api:
     - 127.0.0.1/32
 ```
 
-Then: `sudo systemctl restart vpnctl`.
-
-Optional mail / Telegram delivery — see comments in the config file.
+Then the next one-liner restart will apply it, or: `sudo systemctl restart vpnctl`.
 
 ## Verify
 

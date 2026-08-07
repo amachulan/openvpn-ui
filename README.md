@@ -18,15 +18,17 @@ Built to sit on top of servers installed with [angristan/openvpn-install](https:
 ## Quick start
 
 1. Install OpenVPN with angristan.
-2. Install vpnctl:
+2. Install or upgrade vpnctl (same command every time):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh | sudo bash
+curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" | sudo bash
 ```
 
-3. Open `http://SERVER_IP:8080/`, paste the API token printed by the installer (also in `/etc/vpnctl/config.yaml`).
+3. Open `http://SERVER_IP:8080/`, paste the API token printed by the installer.
 
-See [docs/install.md](docs/install.md) for details.
+Config and token in `/etc/vpnctl/config.yaml` survive upgrades.
+
+See [docs/install.md](docs/install.md).
 
 ## Development
 
