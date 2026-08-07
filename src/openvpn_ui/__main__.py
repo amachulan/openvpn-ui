@@ -1,4 +1,4 @@
-from vpnctl.cli import main
+from openvpn_ui.cli import main
 
 if __name__ == "__main__":
     main()

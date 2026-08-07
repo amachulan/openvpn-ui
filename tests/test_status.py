@@ -1,4 +1,4 @@
-from vpnctl.status import parse_openvpn_status
+from openvpn_ui.status import parse_openvpn_status
 
 
 LEGACY = """\

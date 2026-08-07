@@ -1,4 +1,4 @@
-"""High-level vpnctl operations."""
+"""High-level openvpn-ui operations."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from . import server_conf
 from .status import OnlineClient, read_online_clients
 
 
-class VpnctlService:
+class OpenVpnUiService:
     def __init__(self, cfg: dict[str, Any] | None = None) -> None:
         self.cfg = cfg or load_config()
         self.catalog = Catalog(path_from_cfg(self.cfg, "catalog_db"))
@@ -354,7 +354,7 @@ class VpnctlService:
         try:
             return path_from_cfg(self.cfg, "server_conf_backup_dir")
         except KeyError:
-            return Path("/var/lib/vpnctl/backups")
+            return Path("/var/lib/openvpn-ui/backups")
 
     def _openvpn_unit(self) -> str:
         block = self.cfg.get("openvpn") or {}

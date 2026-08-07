@@ -1,7 +1,7 @@
 (() => {
-  const tokenKey = "vpnctl_api_token";
-  const themeKey = "vpnctl_theme";
-  const langKey = "vpnctl_lang";
+  const tokenKey = "openvpn_ui_api_token";
+  const themeKey = "openvpn_ui_theme";
+  const langKey = "openvpn_ui_lang";
   const $ = (sel) => document.querySelector(sel);
 
   const I18N = {
@@ -21,7 +21,7 @@
       server_title: "OpenVPN server",
       audit_title: "Audit",
       settings_title: "Notification settings",
-      settings_hint: "Saved to /etc/vpnctl/config.yaml. Leave password/token blank to keep the current value.",
+      settings_hint: "Saved to /etc/openvpn-ui/config.yaml. Leave password/token blank to keep the current value.",
       settings_mail: "Email (SMTP)",
       settings_telegram: "Telegram",
       settings_enabled: "Enabled",
@@ -115,8 +115,8 @@
       expiry_soon: "Expiring soon",
       days_short: "d",
       token_saved: "Token saved in this browser",
-      token_missing: "Paste API token (from /etc/vpnctl/config.yaml) and click Save",
-      api_unreachable: "Cannot reach API ({msg}). Check: systemctl status vpnctl; api.host=0.0.0.0; firewall port 8080",
+      token_missing: "Paste API token (from /etc/openvpn-ui/config.yaml) and click Save",
+      api_unreachable: "Cannot reach API ({msg}). Check: systemctl status openvpn-ui; api.host=0.0.0.0; firewall port 8080",
       revoke_confirm: "Revoke {cn}?",
       revoked: "Revoked {cn}",
       issued: "Issued {cn}",
@@ -141,7 +141,7 @@
       server_title: "Сервер OpenVPN",
       audit_title: "Аудит",
       settings_title: "Настройки уведомлений",
-      settings_hint: "Сохраняется в /etc/vpnctl/config.yaml. Пустой пароль/токен — оставить текущее значение.",
+      settings_hint: "Сохраняется в /etc/openvpn-ui/config.yaml. Пустой пароль/токен — оставить текущее значение.",
       settings_mail: "Почта (SMTP)",
       settings_telegram: "Telegram",
       settings_enabled: "Включено",
@@ -235,8 +235,8 @@
       expiry_soon: "Скоро истекают",
       days_short: "д",
       token_saved: "Токен сохранён в этом браузере",
-      token_missing: "Вставьте API-токен из /etc/vpnctl/config.yaml и нажмите «Сохранить»",
-      api_unreachable: "Нет доступа к API ({msg}). Проверьте: systemctl status vpnctl; api.host=0.0.0.0; firewall :8080",
+      token_missing: "Вставьте API-токен из /etc/openvpn-ui/config.yaml и нажмите «Сохранить»",
+      api_unreachable: "Нет доступа к API ({msg}). Проверьте: systemctl status openvpn-ui; api.host=0.0.0.0; firewall :8080",
       revoke_confirm: "Отозвать {cn}?",
       revoked: "Отозван {cn}",
       issued: "Выпущен {cn}",

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vpnctl.service import VpnctlService
+from openvpn_ui.service import OpenVpnUiService
 
 
 def test_list_sessions_uses_empty_status_file_without_management(tmp_path: Path, monkeypatch):
@@ -27,5 +27,5 @@ def test_list_sessions_uses_empty_status_file_without_management(tmp_path: Path,
     def boom(_endpoint):
         raise AssertionError("management should not be called when status file exists")
 
-    monkeypatch.setattr("vpnctl.service.OpenVpnManagementClient", boom)
-    assert VpnctlService(cfg).list_sessions() == []
+    monkeypatch.setattr("openvpn_ui.service.OpenVpnManagementClient", boom)
+    assert OpenVpnUiService(cfg).list_sessions() == []

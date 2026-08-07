@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vpnctl.server_conf import (
+from openvpn_ui.server_conf import (
     apply_settings_patch,
     backup_file,
     list_backups,

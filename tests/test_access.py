@@ -1,7 +1,7 @@
 import ipaddress
 from pathlib import Path
 
-from vpnctl.access import (
+from openvpn_ui.access import (
     client_ip_allowed,
     is_loopback_bind,
     parse_vpn_pool_cidrs,

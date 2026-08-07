@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vpnctl.config import (
+from openvpn_ui.config import (
     load_config,
     normalize_mail_settings,
     normalize_telegram_settings,

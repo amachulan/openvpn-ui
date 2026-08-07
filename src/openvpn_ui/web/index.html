@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>vpnctl</title>
+  <title>openvpn-ui</title>
   <link rel="stylesheet" href="/static/styles.css" />
   <script>
     (() => {
-      const themeKey = "vpnctl_theme";
-      const langKey = "vpnctl_lang";
+      const themeKey = "openvpn_ui_theme";
+      const langKey = "openvpn_ui_lang";
       const savedTheme = localStorage.getItem(themeKey);
       const theme = savedTheme === "light" || savedTheme === "dark"
         ? savedTheme
@@ -26,7 +26,7 @@
 <body>
   <header class="top">
     <div class="brand">
-      <h1>vpnctl</h1>
+      <h1>openvpn-ui</h1>
       <p class="tag" data-i18n="tag">OpenVPN Community management</p>
     </div>
     <div class="token-box">
@@ -230,7 +230,7 @@
         <h2 data-i18n="settings_title">Notification settings</h2>
         <button type="button" id="refresh-settings" class="secondary" data-i18n="refresh">Refresh</button>
       </div>
-      <p class="hint" data-i18n="settings_hint">Saved to /etc/vpnctl/config.yaml. Leave password/token blank to keep the current value.</p>
+      <p class="hint" data-i18n="settings_hint">Saved to /etc/openvpn-ui/config.yaml. Leave password/token blank to keep the current value.</p>
       <form id="settings-form" class="settings-grid">
         <fieldset class="form">
           <legend data-i18n="settings_mail">Email (SMTP)</legend>

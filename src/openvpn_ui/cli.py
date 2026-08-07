@@ -1,4 +1,4 @@
-"""vpnctl command-line entrypoint."""
+"""openvpn-ui command-line entrypoint."""
 
 from __future__ import annotations
 
@@ -13,18 +13,18 @@ from pathlib import Path
 def _read_asset_text(name: str, *relative_candidates: str) -> str | None:
     """Read install asset text from package data or known filesystem locations."""
     try:
-        packaged = resources.files("vpnctl").joinpath("data", name)
+        packaged = resources.files("openvpn_ui").joinpath("data", name)
         return packaged.read_text(encoding="utf-8")
     except (FileNotFoundError, ModuleNotFoundError, AttributeError, TypeError, OSError):
         pass
 
-    env_root = os.environ.get("VPNCTL_INSTALL_DIR", "").strip()
+    env_root = os.environ.get("OPENVPN_UI_INSTALL_DIR", "").strip()
     search_roots: list[Path] = []
     if env_root:
         search_roots.append(Path(env_root))
     search_roots.extend(
         [
-            Path("/opt/vpnctl"),
+            Path("/opt/openvpn-ui"),
             Path(__file__).resolve().parents[2],
             Path(__file__).resolve().parents[3],
         ]
@@ -40,11 +40,11 @@ def _read_asset_text(name: str, *relative_candidates: str) -> str | None:
 def _cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
-    from vpnctl.access import is_loopback_bind, resolve_allow_networks
-    from vpnctl.config import load_config
+    from openvpn_ui.access import is_loopback_bind, resolve_allow_networks
+    from openvpn_ui.config import load_config
 
     if args.config:
-        os.environ["VPNCTL_CONFIG"] = str(Path(args.config))
+        os.environ["OPENVPN_UI_CONFIG"] = str(Path(args.config))
     cfg = load_config(Path(args.config) if args.config else None)
     api = cfg.get("api") or {}
     host = args.host or str(api.get("host") or "0.0.0.0")
@@ -62,7 +62,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
     uvicorn.run(
-        "vpnctl.api.app:create_app",
+        "openvpn_ui.api.app:create_app",
         host=host,
         port=port,
         reload=False,
@@ -74,14 +74,14 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def _cmd_install(args: argparse.Namespace) -> int:
     """Copy example config + systemd unit hints (root recommended)."""
     example_text = _read_asset_text(
-        "vpnctl.yaml.example",
-        "config/vpnctl.yaml.example",
-        "vpnctl.yaml.example",
+        "openvpn-ui.yaml.example",
+        "config/openvpn-ui.yaml.example",
+        "openvpn-ui.yaml.example",
     )
     unit_text = _read_asset_text(
-        "vpnctl.service",
-        "deploy/vpnctl.service",
-        "vpnctl.service",
+        "openvpn-ui.service",
+        "deploy/openvpn-ui.service",
+        "openvpn-ui.service",
     )
 
     config_dir = Path(args.config_dir)
@@ -95,18 +95,18 @@ def _cmd_install(args: argparse.Namespace) -> int:
     if not config_path.exists():
         if not example_text:
             print(
-                "example config missing (expected packaged data or /opt/vpnctl/config/)",
+                "example config missing (expected packaged data or /opt/openvpn-ui/config/)",
                 file=sys.stderr,
             )
             return 1
         token = secrets.token_hex(32)
         text = example_text.replace("token: change-me", f"token: {token}")
         text = text.replace(
-            "catalog_db: /var/lib/vpnctl/catalog.db",
+            "catalog_db: /var/lib/openvpn-ui/catalog.db",
             f"catalog_db: {data_dir / 'catalog.db'}",
         )
         text = text.replace(
-            "client_output_dir: /var/lib/vpnctl/clients",
+            "client_output_dir: /var/lib/openvpn-ui/clients",
             f"client_output_dir: {data_dir / 'clients'}",
         )
         config_path.write_text(text, encoding="utf-8")
@@ -119,7 +119,7 @@ def _cmd_install(args: argparse.Namespace) -> int:
     else:
         print(f"config already exists: {config_path}")
 
-    unit_dst = Path("/etc/systemd/system/vpnctl.service")
+    unit_dst = Path("/etc/systemd/system/openvpn-ui.service")
     if args.systemd:
         if not unit_text:
             print("systemd unit template missing; skipped", file=sys.stderr)
@@ -135,16 +135,16 @@ def _cmd_install(args: argparse.Namespace) -> int:
 
 
 def _cmd_health(_: argparse.Namespace) -> int:
-    from vpnctl.service import VpnctlService
+    from openvpn_ui.service import OpenVpnUiService
 
     import json
 
-    print(json.dumps(VpnctlService().health(), indent=2))
+    print(json.dumps(OpenVpnUiService().health(), indent=2))
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="vpnctl", description="OpenVPN management UI/API")
+    parser = argparse.ArgumentParser(prog="openvpn-ui", description="OpenVPN management UI/API")
     sub = parser.add_subparsers(dest="command", required=True)
 
     serve = sub.add_parser("serve", help="Run API + web UI")
@@ -153,9 +153,9 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, help="Bind port")
     serve.set_defaults(func=_cmd_serve)
 
-    install = sub.add_parser("install", help="Write config under /etc/vpnctl")
-    install.add_argument("--config-dir", default="/etc/vpnctl")
-    install.add_argument("--data-dir", default="/var/lib/vpnctl")
+    install = sub.add_parser("install", help="Write config under /etc/openvpn-ui")
+    install.add_argument("--config-dir", default="/etc/openvpn-ui")
+    install.add_argument("--data-dir", default="/var/lib/openvpn-ui")
     install.add_argument(
         "--systemd",
         action="store_true",

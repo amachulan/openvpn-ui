@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# Install or upgrade vpnctl. Safe to re-run (idempotent one-liner).
-# Preserves /etc/vpnctl/config.yaml; refreshes code under /opt/vpnctl and restarts the service.
+# Install or upgrade openvpn-ui. Safe to re-run (idempotent one-liner).
+# Preserves /etc/openvpn-ui/config.yaml; refreshes code under /opt/openvpn-ui and restarts the service.
 #
 # Fast re-run (skip apt + mirror probes + setuptools bootstrap):
-#   curl -fsSL ".../install.sh?$(date +%s)" | sudo env VPNCTL_SKIP_DEPS=1 bash
-#   sudo bash /opt/vpnctl/scripts/install.sh --from-local --skip-deps
+#   curl -fsSL ".../install.sh?$(date +%s)" | sudo env OPENVPN_UI_SKIP_DEPS=1 bash
+#   sudo bash /opt/openvpn-ui/scripts/install.sh --from-local --skip-deps
 set -euo pipefail
 
-REPO_URL="${VPNCTL_REPO_URL:-https://github.com/amachulan/vpnctl.git}"
-INSTALL_DIR="${VPNCTL_INSTALL_DIR:-/opt/vpnctl}"
-PYTHON="${VPNCTL_PYTHON:-python3}"
+REPO_URL="${OPENVPN_UI_REPO_URL:-https://github.com/amachulan/openvpn-ui.git}"
+INSTALL_DIR="${OPENVPN_UI_INSTALL_DIR:-/opt/openvpn-ui}"
+PYTHON="${OPENVPN_UI_PYTHON:-python3}"
 export PIP_DEFAULT_TIMEOUT="${PIP_DEFAULT_TIMEOUT:-60}"
-export VPNCTL_INSTALL_DIR="${INSTALL_DIR}"
-PIP_INDEX="${VPNCTL_PIP_INDEX:-}"
-UPGRADE_PIP="${VPNCTL_UPGRADE_PIP:-0}"
-SKIP_DEPS="${VPNCTL_SKIP_DEPS:-0}"
-INSTALL_SH_REV="2026-08-07f"
+export OPENVPN_UI_INSTALL_DIR="${INSTALL_DIR}"
+PIP_INDEX="${OPENVPN_UI_PIP_INDEX:-}"
+UPGRADE_PIP="${OPENVPN_UI_UPGRADE_PIP:-0}"
+SKIP_DEPS="${OPENVPN_UI_SKIP_DEPS:-0}"
+INSTALL_SH_REV="2026-08-07-rename"
 PIP_INDEX_CACHE="${INSTALL_DIR}/.pip-index"
 
 PIP_MIRRORS=(
@@ -32,7 +32,7 @@ for arg in "$@"; do
     --skip-deps) SKIP_DEPS=1 ;;
   esac
 done
-export VPNCTL_SKIP_DEPS="${SKIP_DEPS}"
+export OPENVPN_UI_SKIP_DEPS="${SKIP_DEPS}"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Run as root (sudo)." >&2
@@ -55,7 +55,7 @@ sync_repo() {
     apt-get update -y
     apt-get install -y git curl
   elif ! command -v git >/dev/null 2>&1; then
-    echo "git missing; run a full install once without VPNCTL_SKIP_DEPS=1" >&2
+    echo "git missing; run a full install once without OPENVPN_UI_SKIP_DEPS=1" >&2
     exit 1
   fi
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
@@ -78,14 +78,14 @@ if [[ "${FROM_LOCAL}" != "1" ]]; then
   exec bash "${INSTALL_DIR}/scripts/install.sh" --from-local
 fi
 
-echo "vpnctl install.sh rev ${INSTALL_SH_REV} (idempotent install/upgrade)"
+echo "openvpn-ui install.sh rev ${INSTALL_SH_REV} (idempotent install/upgrade)"
 if [[ "${SKIP_DEPS}" == "1" ]]; then
   echo "SKIP_DEPS=1 — skipping apt and mirror probes"
 fi
 
 pick_pip_index() {
   if [[ -n "${PIP_INDEX}" ]]; then
-    echo "Using VPNCTL_PIP_INDEX=${PIP_INDEX}"
+    echo "Using OPENVPN_UI_PIP_INDEX=${PIP_INDEX}"
     return 0
   fi
   if [[ -f "${PIP_INDEX_CACHE}" ]]; then
@@ -151,7 +151,7 @@ pip_install() {
     if (( attempt >= max )); then
       echo "pip failed after ${max} attempts." >&2
       echo "Index used: ${PIP_INDEX_URL}" >&2
-      echo "Override: VPNCTL_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple" >&2
+      echo "Override: OPENVPN_UI_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple" >&2
       return 1
     fi
     echo "pip failed (attempt ${attempt}/${max}), retrying in $((attempt * 3))s..." >&2
@@ -179,37 +179,37 @@ else
   pip_install --upgrade --force-reinstall "${INSTALL_DIR}"
 fi
 
-ln -sfn "${INSTALL_DIR}/.venv/bin/vpnctl" /usr/local/bin/vpnctl
+ln -sfn "${INSTALL_DIR}/.venv/bin/openvpn-ui" /usr/local/bin/openvpn-ui
 
 CONFIG_EXISTED=0
-[[ -f /etc/vpnctl/config.yaml ]] && CONFIG_EXISTED=1
+[[ -f /etc/openvpn-ui/config.yaml ]] && CONFIG_EXISTED=1
 
-vpnctl install --systemd
+openvpn-ui install --systemd
 
 systemctl daemon-reload
-systemctl enable vpnctl
-systemctl restart vpnctl
+systemctl enable openvpn-ui
+systemctl restart openvpn-ui
 
 sleep 1
-if systemctl is-active --quiet vpnctl; then
+if systemctl is-active --quiet openvpn-ui; then
   STATUS_LINE="active"
 else
-  STATUS_LINE="NOT active — run: journalctl -u vpnctl -n 50 --no-pager"
+  STATUS_LINE="NOT active — run: journalctl -u openvpn-ui -n 50 --no-pager"
 fi
 
-TOKEN="$(awk '/^[[:space:]]*token:/{print $2; exit}' /etc/vpnctl/config.yaml 2>/dev/null || true)"
+TOKEN="$(awk '/^[[:space:]]*token:/{print $2; exit}' /etc/openvpn-ui/config.yaml 2>/dev/null || true)"
 HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 [[ -z "${HOST_IP}" ]] && HOST_IP="SERVER_IP"
 
 echo
 if [[ "${CONFIG_EXISTED}" -eq 1 ]]; then
-  echo "vpnctl upgraded and restarted (${STATUS_LINE})."
+  echo "openvpn-ui upgraded and restarted (${STATUS_LINE})."
 else
-  echo "vpnctl installed and started (${STATUS_LINE})."
+  echo "openvpn-ui installed and started (${STATUS_LINE})."
 fi
 echo "  UI:     http://${HOST_IP}:8080/"
-echo "  Token:  ${TOKEN:-see /etc/vpnctl/config.yaml}"
-echo "  Config: /etc/vpnctl/config.yaml (preserved across upgrades)"
+echo "  Token:  ${TOKEN:-see /etc/openvpn-ui/config.yaml}"
+echo "  Config: /etc/openvpn-ui/config.yaml (preserved across upgrades)"
 echo "  Code:   ${INSTALL_DIR}"
 if [[ "${SKIP_DEPS}" == "1" ]]; then
   echo "  Mode:   skip-deps"

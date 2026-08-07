@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from vpnctl.pki import (
+from openvpn_ui.pki import (
     PkiError,
     find_existing_ovpn,
     is_server_cn,

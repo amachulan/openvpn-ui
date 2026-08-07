@@ -369,7 +369,7 @@ def _extract_cert_body(cert_text: str) -> str:
 
 
 def find_existing_ovpn(cn: str, output_dir: Path) -> Path | None:
-    """Locate an existing .ovpn (vpnctl output dir or angristan home/root layout)."""
+    """Locate an existing .ovpn (openvpn-ui output dir or angristan home/root layout)."""
     cn = validate_cn(cn)
     candidates = [
         output_dir / f"{cn}.ovpn",

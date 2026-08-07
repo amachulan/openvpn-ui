@@ -33,7 +33,7 @@ def send_ovpn_email(
 
     msg = EmailMessage()
     msg["Subject"] = str(mail_cfg.get("subject") or "Your OpenVPN profile")
-    msg["From"] = str(mail_cfg.get("from_addr") or "vpnctl@localhost")
+    msg["From"] = str(mail_cfg.get("from_addr") or "openvpn-ui@localhost")
     msg["To"] = to_addr
     msg.set_content(
         f"Attached is your OpenVPN profile for client '{cn}'.\n"
@@ -87,7 +87,7 @@ def send_ovpn_telegram(
     if not ovpn_path.is_file():
         raise NotifyError(f"profile not found: {ovpn_path}")
 
-    boundary = "----vpnctlBoundary7MA4YWxkTrZu0gW"
+    boundary = "----openvpnUiBoundary7MA4YWxkTrZu0gW"
     caption = f"OpenVPN profile for {cn}"
     body = (
         f"--{boundary}\r\n"

@@ -1,4 +1,4 @@
-# vpnctl
+# openvpn-ui
 
 Web UI and API for administering a self-hosted **OpenVPN Community** server (clients **and** `server.conf`).
 
@@ -17,21 +17,21 @@ Built to sit on top of servers installed with [angristan/openvpn-install](https:
 ## Quick start
 
 1. Install OpenVPN with angristan.
-2. Install or upgrade vpnctl (same command every time):
+2. Install or upgrade openvpn-ui (same command every time):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" | sudo bash
+curl -fsSL "https://raw.githubusercontent.com/amachulan/openvpn-ui/main/scripts/install.sh?$(date +%s)" | sudo bash
 ```
 
 Fast upgrades (skip apt + mirror checks):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh?$(date +%s)" | sudo env VPNCTL_SKIP_DEPS=1 bash
+curl -fsSL "https://raw.githubusercontent.com/amachulan/openvpn-ui/main/scripts/install.sh?$(date +%s)" | sudo env OPENVPN_UI_SKIP_DEPS=1 bash
 ```
 
 3. Open `http://SERVER_IP:8080/`, paste the API token printed by the installer.
 
-Config and token in `/etc/vpnctl/config.yaml` survive upgrades.
+Config and token in `/etc/openvpn-ui/config.yaml` survive upgrades.
 
 See [docs/install.md](docs/install.md).
 
@@ -42,7 +42,7 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 pytest
-VPNCTL_CONFIG=./config/vpnctl.yaml.example vpnctl serve --host 127.0.0.1 --port 8080
+OPENVPN_UI_CONFIG=./config/openvpn-ui.yaml.example openvpn-ui serve --host 127.0.0.1 --port 8080
 ```
 
 Copy and edit the example config before real use; set a strong `api.token`.

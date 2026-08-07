@@ -1,4 +1,4 @@
-from vpnctl.catalog import Catalog
+from openvpn_ui.catalog import Catalog
 
 
 def test_catalog_meta_and_audit(tmp_path):

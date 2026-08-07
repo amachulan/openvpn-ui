@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vpnctl"
+name = "openvpn-ui"
 version = "0.2.0"
 description = "Web UI/API for OpenVPN Community servers (pairs with angristan/openvpn-install)"
 readme = "README.md"
@@ -21,13 +21,13 @@ dependencies = [
 dev = ["pytest>=8.0", "httpx>=0.27"]
 
 [project.scripts]
-vpnctl = "vpnctl.cli:main"
+openvpn-ui = "openvpn_ui.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-vpnctl = ["web/*", "data/*"]
+openvpn_ui = ["web/*", "data/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

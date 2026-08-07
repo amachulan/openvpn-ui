@@ -1,4 +1,4 @@
-"""Load and resolve vpnctl configuration."""
+"""Load and resolve openvpn-ui configuration."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG_PATH = Path("/etc/vpnctl/config.yaml")
+DEFAULT_CONFIG_PATH = Path("/etc/openvpn-ui/config.yaml")
 
 
 def default_config() -> dict[str, Any]:
@@ -20,9 +20,9 @@ def default_config() -> dict[str, Any]:
             "client_template": "/etc/openvpn/server/client-template.txt",
             "status_log": "/var/log/openvpn/status.log",
             "crl_publish": "/etc/openvpn/server/crl.pem",
-            "client_output_dir": "/var/lib/vpnctl/clients",
-            "catalog_db": "/var/lib/vpnctl/catalog.db",
-            "server_conf_backup_dir": "/var/lib/vpnctl/backups",
+            "client_output_dir": "/var/lib/openvpn-ui/clients",
+            "catalog_db": "/var/lib/openvpn-ui/catalog.db",
+            "server_conf_backup_dir": "/var/lib/openvpn-ui/backups",
         },
         "openvpn": {
             # Override if not angristan default openvpn-server@server.
@@ -52,7 +52,7 @@ def default_config() -> dict[str, Any]:
             "smtp_user": "",
             "smtp_password": "",
             "use_tls": False,
-            "from_addr": "vpnctl@example.com",
+            "from_addr": "openvpn-ui@example.com",
             "subject": "Your OpenVPN profile",
         },
         "telegram": {
@@ -64,7 +64,7 @@ def default_config() -> dict[str, Any]:
 
 
 def config_path_env() -> Path:
-    raw = os.environ.get("VPNCTL_CONFIG", "").strip()
+    raw = os.environ.get("OPENVPN_UI_CONFIG", "").strip()
     if raw:
         return Path(raw)
     return DEFAULT_CONFIG_PATH

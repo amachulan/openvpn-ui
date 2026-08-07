@@ -1,4 +1,4 @@
-"""FastAPI application for vpnctl."""
+"""FastAPI application for openvpn_ui."""
 
 from __future__ import annotations
 
@@ -11,16 +11,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from vpnctl import __version__
-from vpnctl.access import client_ip_allowed, extract_client_ip, resolve_allow_networks
-from vpnctl.api.auth import require_token
-from vpnctl.config import load_config
-from vpnctl.management import ManagementError, SessionNotFoundError
-from vpnctl.notify import NotifyError
-from vpnctl.openvpn_svc import OpenVpnServiceError
-from vpnctl.pki import PkiError
-from vpnctl.server_conf import ServerConfError
-from vpnctl.service import VpnctlService
+from openvpn_ui import __version__
+from openvpn_ui.access import client_ip_allowed, extract_client_ip, resolve_allow_networks
+from openvpn_ui.api.auth import require_token
+from openvpn_ui.config import load_config
+from openvpn_ui.management import ManagementError, SessionNotFoundError
+from openvpn_ui.notify import NotifyError
+from openvpn_ui.openvpn_svc import OpenVpnServiceError
+from openvpn_ui.pki import PkiError
+from openvpn_ui.server_conf import ServerConfError
+from openvpn_ui.service import OpenVpnUiService
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
@@ -125,12 +125,12 @@ class RestoreBody(BaseModel):
 
 def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
     cfg = cfg or load_config()
-    service = VpnctlService(cfg)
+    service = OpenVpnUiService(cfg)
     auth = require_token(cfg)
     allow_networks = resolve_allow_networks(cfg)
 
     app = FastAPI(
-        title="vpnctl",
+        title="openvpn-ui",
         version=__version__,
         description="Web UI/API for OpenVPN Community (angristan-compatible)",
     )
@@ -335,5 +335,5 @@ def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
     return app
 
 
-# ASGI entry for `uvicorn vpnctl.api.app:app`
+# ASGI entry for `uvicorn openvpn_ui.api.app:app`
 app = create_app()
