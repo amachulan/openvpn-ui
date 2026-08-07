@@ -5,9 +5,36 @@ from __future__ import annotations
 import argparse
 import os
 import secrets
-import shutil
 import sys
+from importlib import resources
 from pathlib import Path
+
+
+def _read_asset_text(name: str, *relative_candidates: str) -> str | None:
+    """Read install asset text from package data or known filesystem locations."""
+    try:
+        packaged = resources.files("vpnctl").joinpath("data", name)
+        return packaged.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, AttributeError, TypeError, OSError):
+        pass
+
+    env_root = os.environ.get("VPNCTL_INSTALL_DIR", "").strip()
+    search_roots: list[Path] = []
+    if env_root:
+        search_roots.append(Path(env_root))
+    search_roots.extend(
+        [
+            Path("/opt/vpnctl"),
+            Path(__file__).resolve().parents[2],
+            Path(__file__).resolve().parents[3],
+        ]
+    )
+    for root in search_roots:
+        for rel in relative_candidates:
+            candidate = root / rel
+            if candidate.is_file():
+                return candidate.read_text(encoding="utf-8")
+    return None
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
@@ -46,9 +73,16 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 def _cmd_install(args: argparse.Namespace) -> int:
     """Copy example config + systemd unit hints (root recommended)."""
-    repo_root = Path(__file__).resolve().parents[2]
-    example = repo_root / "config" / "vpnctl.yaml.example"
-    unit_src = repo_root / "deploy" / "vpnctl.service"
+    example_text = _read_asset_text(
+        "vpnctl.yaml.example",
+        "config/vpnctl.yaml.example",
+        "vpnctl.yaml.example",
+    )
+    unit_text = _read_asset_text(
+        "vpnctl.service",
+        "deploy/vpnctl.service",
+        "vpnctl.service",
+    )
 
     config_dir = Path(args.config_dir)
     data_dir = Path(args.data_dir)
@@ -59,12 +93,14 @@ def _cmd_install(args: argparse.Namespace) -> int:
     (data_dir / "clients").mkdir(parents=True, exist_ok=True)
 
     if not config_path.exists():
-        if not example.is_file():
-            print(f"example config missing: {example}", file=sys.stderr)
+        if not example_text:
+            print(
+                "example config missing (expected packaged data or /opt/vpnctl/config/)",
+                file=sys.stderr,
+            )
             return 1
-        text = example.read_text(encoding="utf-8")
         token = secrets.token_hex(32)
-        text = text.replace("token: change-me", f"token: {token}")
+        text = example_text.replace("token: change-me", f"token: {token}")
         text = text.replace(
             "catalog_db: /var/lib/vpnctl/catalog.db",
             f"catalog_db: {data_dir / 'catalog.db'}",
@@ -84,14 +120,17 @@ def _cmd_install(args: argparse.Namespace) -> int:
         print(f"config already exists: {config_path}")
 
     unit_dst = Path("/etc/systemd/system/vpnctl.service")
-    if args.systemd and unit_src.is_file():
-        euid = os.geteuid() if hasattr(os, "geteuid") else 1
-        if euid != 0:
-            print("skipping systemd unit install (not root)", file=sys.stderr)
+    if args.systemd:
+        if not unit_text:
+            print("systemd unit template missing; skipped", file=sys.stderr)
         else:
-            shutil.copy2(unit_src, unit_dst)
-            print(f"installed {unit_dst}")
-            print("Run: systemctl daemon-reload && systemctl enable --now vpnctl")
+            euid = os.geteuid() if hasattr(os, "geteuid") else 1
+            if euid != 0:
+                print("skipping systemd unit install (not root)", file=sys.stderr)
+            else:
+                unit_dst.write_text(unit_text, encoding="utf-8")
+                print(f"installed {unit_dst}")
+                print("Run: systemctl daemon-reload && systemctl enable --now vpnctl")
 
     print("Next: ensure OpenVPN was installed with angristan/openvpn-install")
     print(f"Then: VPNCTL_CONFIG={config_path} vpnctl serve")

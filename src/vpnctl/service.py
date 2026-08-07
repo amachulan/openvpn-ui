@@ -38,7 +38,7 @@ class VpnctlService:
         allow_nets = [str(n) for n in resolve_allow_networks(self.cfg)]
         return {
             "ok": True,
-            "version": "0.1.0",
+            "version": "0.1.1",
             "config_path": self.cfg.get("_config_path"),
             "easy_rsa_dir": str(easy),
             "index_txt": idx.is_file(),
