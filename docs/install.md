@@ -36,32 +36,20 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now vpnctl
 ```
 
-### PyPI timeouts
+### PyPI timeouts / blocked pypi.org
 
-Some VPS providers have slow or filtered access to `pypi.org`. Symptoms: `ReadTimeoutError` / `No matching distribution found for setuptools`.
+Many VPS hosts cannot reach `pypi.org` reliably. `install.sh` probes mirrors and picks the first that responds.
 
-Nested pip (build isolation) uses **`PIP_DEFAULT_TIMEOUT` from the environment**, not only `--default-timeout`.
-
-```bash
-export PIP_DEFAULT_TIMEOUT=180
-cd /opt/vpnctl
-source .venv/bin/activate
-pip install --default-timeout=180 setuptools wheel
-pip install --default-timeout=180 --no-build-isolation .
-sudo ln -sfn /opt/vpnctl/.venv/bin/vpnctl /usr/local/bin/vpnctl
-sudo vpnctl install --systemd
-sudo systemctl daemon-reload && sudo systemctl enable --now vpnctl
-```
-
-If PyPI is unreachable, try a mirror:
+Force a mirror:
 
 ```bash
-export PIP_DEFAULT_TIMEOUT=180
-export VPNCTL_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
-# or re-run: curl -fsSL .../install.sh | sudo -E bash
+curl -fsSL https://raw.githubusercontent.com/amachulan/vpnctl/main/scripts/install.sh \
+  | sudo env PIP_DEFAULT_TIMEOUT=60 VPNCTL_PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple bash
 ```
 
-Check outbound HTTPS: `curl -I https://pypi.org/simple/pip/`.
+Other indexes to try: `https://mirrors.aliyun.com/pypi/simple`, `https://pypi.mirrors.ustc.edu.cn/simple`.
+
+Check: `curl -I https://pypi.org/simple/pip/` vs `curl -I https://pypi.tuna.tsinghua.edu.cn/simple/pip/`.
 
 ## Configure
 
