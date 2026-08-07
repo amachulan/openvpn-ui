@@ -1,10 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>vpnctl</title>
   <link rel="stylesheet" href="/static/styles.css" />
+  <script>
+    (() => {
+      const key = "vpnctl_theme";
+      const saved = localStorage.getItem(key);
+      const theme = saved === "light" || saved === "dark"
+        ? saved
+        : (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
 </head>
 <body>
   <header class="top">
@@ -16,6 +26,7 @@
       <label for="token">API token</label>
       <input id="token" type="password" autocomplete="off" placeholder="Bearer token" />
       <button type="button" id="save-token">Save</button>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle theme">Theme</button>
     </div>
   </header>
 

@@ -1,9 +1,36 @@
 (() => {
   const tokenKey = "vpnctl_api_token";
+  const themeKey = "vpnctl_theme";
   const $ = (sel) => document.querySelector(sel);
 
   const statusEl = $("#status");
   const tokenInput = $("#token");
+  const themeToggle = $("#theme-toggle");
+
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  }
+
+  function applyTheme(theme) {
+    const next = theme === "light" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem(themeKey, next);
+    if (themeToggle) {
+      themeToggle.textContent = next === "light" ? "Dark" : "Light";
+      themeToggle.title = next === "light" ? "Switch to dark theme" : "Switch to light theme";
+    }
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(themeKey);
+    if (saved === "light" || saved === "dark") {
+      applyTheme(saved);
+      return;
+    }
+    applyTheme(
+      window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"
+    );
+  }
 
   function showStatus(message, kind = "") {
     statusEl.hidden = !message;
@@ -250,6 +277,10 @@
     loadClients();
   });
 
+  themeToggle.addEventListener("click", () => {
+    applyTheme(currentTheme() === "light" ? "dark" : "light");
+  });
+
   $("#refresh-clients").addEventListener("click", loadClients);
   $("#refresh-sessions").addEventListener("click", loadSessions);
   $("#refresh-audit").addEventListener("click", loadAudit);
@@ -282,5 +313,6 @@
   });
 
   tokenInput.value = getToken();
+  initTheme();
   loadClients();
 })();

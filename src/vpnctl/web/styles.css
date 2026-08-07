@@ -1,15 +1,58 @@
-:root {
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0f1419;
+  --bg-glow-a: #1d3a55;
+  --bg-glow-b: #24384f;
   --panel: #1a222c;
+  --panel-soft: rgba(26, 34, 44, 0.85);
   --border: #2c3846;
   --text: #e7eef7;
   --muted: #8fa3b8;
   --accent: #3d9cf0;
+  --accent-text: #061018;
   --danger: #e35d6a;
   --ok: #3ecf8e;
   --warn: #e0b44b;
+  --status-bg: #243247;
+  --status-error-bg: #3a1f26;
+  --status-ok-bg: #1a3328;
+  --banner-bg: #3a3018;
+  --banner-text: #ffe9a8;
+  --badge-valid-bg: #1d3d2d;
+  --badge-revoked-bg: #402028;
+  --badge-revoked-text: #ffb0b8;
+  --badge-expired-bg: #40351a;
+  --badge-offline-bg: #2a3340;
   --radius: 10px;
   --font: "Segoe UI", system-ui, sans-serif;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eef3f8;
+  --bg-glow-a: #c5daf0;
+  --bg-glow-b: #d7e4f2;
+  --panel: #ffffff;
+  --panel-soft: rgba(255, 255, 255, 0.92);
+  --border: #c9d6e5;
+  --text: #15202b;
+  --muted: #5b6b7c;
+  --accent: #1f7ad4;
+  --accent-text: #ffffff;
+  --danger: #d64550;
+  --ok: #1f9d63;
+  --warn: #b8860b;
+  --status-bg: #e7eef7;
+  --status-error-bg: #fde8ea;
+  --status-ok-bg: #e5f6ee;
+  --banner-bg: #fff6dd;
+  --banner-text: #7a5b00;
+  --badge-valid-bg: #e5f6ee;
+  --badge-revoked-bg: #fde8ea;
+  --badge-revoked-text: #a8323c;
+  --badge-expired-bg: #fff6dd;
+  --badge-offline-bg: #e8eef5;
 }
 
 * { box-sizing: border-box; }
@@ -20,9 +63,10 @@ body {
   font-family: var(--font);
   color: var(--text);
   background:
-    radial-gradient(1200px 500px at 10% -10%, #1d3a55 0%, transparent 55%),
-    radial-gradient(900px 400px at 90% 0%, #24384f 0%, transparent 50%),
+    radial-gradient(1200px 500px at 10% -10%, var(--bg-glow-a) 0%, transparent 55%),
+    radial-gradient(900px 400px at 90% 0%, var(--bg-glow-b) 0%, transparent 50%),
     var(--bg);
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .top {
@@ -80,7 +124,7 @@ input:not([type]) {
 
 button {
   background: var(--accent);
-  color: #061018;
+  color: var(--accent-text);
   border: 0;
   border-radius: 8px;
   padding: 0.5rem 0.9rem;
@@ -88,7 +132,8 @@ button {
   cursor: pointer;
 }
 
-button.secondary {
+button.secondary,
+button.theme-toggle {
   background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
@@ -102,6 +147,12 @@ button.danger {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.theme-toggle {
+  min-width: 2.5rem;
+  padding-left: 0.7rem;
+  padding-right: 0.7rem;
 }
 
 .tabs {
@@ -146,19 +197,19 @@ main {
 .status {
   padding: 0.65rem 0.85rem;
   border-radius: var(--radius);
-  background: #243247;
+  background: var(--status-bg);
   border: 1px solid var(--border);
   margin-bottom: 1rem;
 }
 
 .status.error {
   border-color: var(--danger);
-  background: #3a1f26;
+  background: var(--status-error-bg);
 }
 
 .status.ok {
   border-color: var(--ok);
-  background: #1a3328;
+  background: var(--status-ok-bg);
 }
 
 .banner {
@@ -166,15 +217,15 @@ main {
   padding: 0.65rem 0.85rem;
   border-radius: var(--radius);
   border: 1px solid var(--warn);
-  background: #3a3018;
-  color: #ffe9a8;
+  background: var(--banner-bg);
+  color: var(--banner-text);
 }
 
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(26, 34, 44, 0.85);
+  background: var(--panel-soft);
 }
 
 table {
@@ -208,11 +259,11 @@ tr:last-child td { border-bottom: 0; }
   font-weight: 600;
 }
 
-.badge.valid { background: #1d3d2d; color: var(--ok); }
-.badge.revoked { background: #402028; color: #ffb0b8; }
-.badge.expired { background: #40351a; color: var(--warn); }
-.badge.online { background: #1d3d2d; color: var(--ok); }
-.badge.offline { background: #2a3340; color: var(--muted); }
+.badge.valid { background: var(--badge-valid-bg); color: var(--ok); }
+.badge.revoked { background: var(--badge-revoked-bg); color: var(--badge-revoked-text); }
+.badge.expired { background: var(--badge-expired-bg); color: var(--warn); }
+.badge.online { background: var(--badge-valid-bg); color: var(--ok); }
+.badge.offline { background: var(--badge-offline-bg); color: var(--muted); }
 
 .actions {
   display: flex;
@@ -227,7 +278,7 @@ tr:last-child td { border-bottom: 0; }
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(26, 34, 44, 0.85);
+  background: var(--panel-soft);
 }
 
 .form label {
