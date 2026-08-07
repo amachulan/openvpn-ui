@@ -71,17 +71,16 @@ fi
 # shellcheck disable=SC1091
 source "${INSTALL_DIR}/.venv/bin/activate"
 
-pip_args=(
-  --disable-pip-version-check
-  --default-timeout="${PIP_DEFAULT_TIMEOUT}"
-  -i "${PIP_INDEX}"
-)
-
-pip_retry() {
+# Options must follow the subcommand: `pip install -i URL ...` (not `pip -i URL install`).
+pip_install() {
   local attempt=1
   local max=4
   while true; do
-    if pip "${pip_args[@]}" "$@"; then
+    if python -m pip install \
+      --disable-pip-version-check \
+      --default-timeout="${PIP_DEFAULT_TIMEOUT}" \
+      --index-url "${PIP_INDEX}" \
+      "$@"; then
       return 0
     fi
     if (( attempt >= max )); then
@@ -98,16 +97,16 @@ pip_retry() {
 }
 
 if [[ "${UPGRADE_PIP}" == "1" ]]; then
-  pip_retry install -U pip setuptools wheel
+  pip_install -U pip setuptools wheel
 else
-  pip_retry install setuptools wheel
+  pip_install setuptools wheel
 fi
 
-if pip_retry install --no-build-isolation "${INSTALL_DIR}"; then
+if pip_install --no-build-isolation "${INSTALL_DIR}"; then
   :
 else
   echo "Retrying with build isolation..." >&2
-  pip_retry install "${INSTALL_DIR}"
+  pip_install "${INSTALL_DIR}"
 fi
 
 ln -sfn "${INSTALL_DIR}/.venv/bin/vpnctl" /usr/local/bin/vpnctl
