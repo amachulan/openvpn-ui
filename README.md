@@ -9,7 +9,8 @@ Built to sit on top of servers installed with [angristan/openvpn-install](https:
 - List certificates from Easy-RSA `index.txt`
 - Issue / renew / revoke clients and build inline `.ovpn`
 - Online sessions (status log / management) + disconnect
-- **Server admin:** structured settings (port, proto, DNS, routes, cipher, …), raw `server.conf`, backups/restore, OpenVPN restart
+- **Server admin:** dual UDP/TCP instances (shared PKI/CCD/subnet), structured settings, raw conf, backups, restart
+- Issue / renew builds `{cn}-udp.ovpn` / `{cn}-tcp.ovpn` when both instances are enabled
 - Token-auth API (binds `0.0.0.0` by default)
 - Labels / notes, audit log, expiry warnings
 - Optional email / Telegram delivery of `.ovpn` (Settings tab)
@@ -59,21 +60,24 @@ Default bind is `0.0.0.0:8080`. For VPN-only access set `api.allow_from_vpn: tru
 | PATCH | `/api/v1/clients/{cn}` | Update label/notes/email |
 | POST | `/api/v1/clients/{cn}/revoke` | Revoke |
 | POST | `/api/v1/clients/{cn}/renew` | Renew certificate |
-| GET | `/api/v1/clients/{cn}/ovpn` | Download `.ovpn` |
-| POST | `/api/v1/clients/{cn}/deliver` | Email/Telegram delivery |
+| GET | `/api/v1/clients/{cn}/ovpn?proto=udp\|tcp` | Download `.ovpn` (default = primary) |
+| POST | `/api/v1/clients/{cn}/deliver` | Email/Telegram delivery (all enabled profiles) |
 | GET | `/api/v1/sessions` | Online clients |
 | POST | `/api/v1/sessions/disconnect` | Kick session |
-| GET | `/api/v1/server` | Structured server settings + service status |
-| PUT | `/api/v1/server` | Patch server.conf (backed up) |
-| GET | `/api/v1/server/conf` | Raw server.conf |
-| PUT | `/api/v1/server/conf` | Replace raw server.conf |
-| GET | `/api/v1/server/backups` | List conf backups |
-| POST | `/api/v1/server/backups/{id}/restore` | Restore backup |
-| POST | `/api/v1/server/restart` | Restart OpenVPN unit |
+| GET | `/api/v1/server` | Both instances: settings + service status |
+| PUT | `/api/v1/server/instances/{id}` | Patch one instance (`udp`\|`tcp`) |
+| GET/PUT | `/api/v1/server/instances/{id}/conf` | Raw conf for instance |
+| POST | `/api/v1/server/instances/{id}/enable` | Clone conf from primary + enable unit |
+| POST | `/api/v1/server/instances/{id}/disable` | Stop/disable unit |
+| POST | `/api/v1/server/instances/{id}/restart` | Restart instance unit |
+| GET | `/api/v1/server/instances/{id}/backups` | List conf backups |
+| POST | `/api/v1/server/instances/{id}/backups/{id}/restore` | Restore backup |
 | GET | `/api/v1/expiry` | Certs nearing expiry |
 | GET | `/api/v1/audit` | Audit events |
 | GET | `/api/v1/settings/notify` | Mail/Telegram settings (secrets redacted) |
 | PUT | `/api/v1/settings/notify` | Update mail/Telegram (persists to config.yaml) |
+
+Legacy primary-only `/api/v1/server` mutating routes still work (routed to the primary instance).
 
 Auth: `Authorization: Bearer <token>` or `X-API-Token`.
 
@@ -85,6 +89,7 @@ Auth: `Authorization: Bearer <token>` or `X-API-Token`.
 | MVP | done | issue / revoke / download / sessions |
 | v0.2 | done | labels, audit, expiry, mail/telegram |
 | v0.2.0 server | done | server.conf admin, backups, restart, renew |
+| v0.3.0 dual | done | UDP+TCP instances, two client profiles |
 | Later | planned | groups + CCD push routes, self-service link, OIDC admin, metrics |
 | Optional | maybe | network segmentation module |
 

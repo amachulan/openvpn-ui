@@ -56,16 +56,33 @@ Then the next one-liner restart will apply it, or: `sudo systemctl restart openv
 
 ## OpenVPN server admin (UI)
 
-The **Server** tab edits `/etc/openvpn/server/server.conf` (with backups under `/var/lib/openvpn-ui/backups/`) and can restart the OpenVPN unit (default `openvpn-server@server`).
+The **Server** tab shows **UDP** and **TCP** instance cards. The primary instance is your existing `/etc/openvpn/server/server.conf` (and `openvpn-server@server`). Enabling the secondary clones that conf to `server-tcp.conf` or `server-udp.conf` (opposite proto), rewrites status/management/ipp paths, keeps shared PKI/CCD/`server` subnet, then runs `systemctl enable --now openvpn-server@server-tcp` (or `@server-udp`).
 
-openvpn-ui runs as root via systemd today, so `systemctl restart openvpn-server@server` works. Override the unit name with:
+Clients get separate profiles: `{cn}-udp.ovpn` and `{cn}-tcp.ovpn`. Do not connect both at once with the same CN unless `duplicate-cn` is on. openvpn-ui does **not** open the firewall for the secondary port — allow it yourself (e.g. TCP 443).
+
+Backups live under `/var/lib/openvpn-ui/backups/` (prefixed by conf basename).
+
+Example `openvpn.instances` (written automatically when you enable/disable in the UI):
 
 ```yaml
 openvpn:
-  service: openvpn-server@server
+  service: ""   # legacy primary override
+  instances:
+    udp:
+      enabled: true
+      conf: /etc/openvpn/server/server.conf
+      service: openvpn-server@server
+      port: 1194
+      primary: true
+    tcp:
+      enabled: true
+      conf: /etc/openvpn/server/server-tcp.conf
+      service: openvpn-server@server-tcp
+      port: 443
+      primary: false
 ```
 
-If a save breaks the VPN, restore from the Server → Backups list, or:
+If a save breaks the VPN, restore from the instance Backups list, or:
 
 ```bash
 sudo cp /var/lib/openvpn-ui/backups/server.conf.TIMESTAMP /etc/openvpn/server/server.conf

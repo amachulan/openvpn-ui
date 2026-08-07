@@ -401,7 +401,12 @@ def build_ovpn(
     client_template: Path,
     cn: str,
     output_dir: Path,
+    proto: str | None = None,
+    port: int | None = None,
+    filename_suffix: str | None = None,
 ) -> Path:
+    from .server_conf import apply_client_endpoint_overrides
+
     cn = validate_cn(cn)
     if not client_template.is_file():
         raise PkiError(f"client template not found: {client_template}")
@@ -413,8 +418,14 @@ def build_ovpn(
     if not ca_file.is_file():
         raise PkiError(f"CA cert not found: {ca_file}")
 
+    header = client_template.read_text(encoding="utf-8", errors="replace").rstrip()
+    if proto or port is not None:
+        header = apply_client_endpoint_overrides(
+            header + "\n", proto=proto, port=port
+        ).rstrip()
+
     parts: list[str] = [
-        client_template.read_text(encoding="utf-8", errors="replace").rstrip(),
+        header,
         "",
         "<ca>",
         ca_file.read_text(encoding="utf-8", errors="replace").strip(),
@@ -497,7 +508,9 @@ def build_ovpn(
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    out = output_dir / f"{cn}.ovpn"
+    suffix = (filename_suffix or "").strip()
+    name = f"{cn}-{suffix}.ovpn" if suffix else f"{cn}.ovpn"
+    out = output_dir / name
     out.write_text("\n".join(parts) + "\n", encoding="utf-8")
     try:
         out.chmod(0o600)

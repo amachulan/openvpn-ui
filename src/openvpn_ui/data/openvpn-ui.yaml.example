@@ -13,8 +13,22 @@ paths:
   server_conf_backup_dir: /var/lib/openvpn-ui/backups
 
 # OpenVPN systemd unit (empty = auto-detect openvpn-server@server).
+# Dual UDP+TCP: UI can enable a secondary instance; paths are persisted here.
 openvpn:
   service: ""
+  instances:
+    udp:
+      enabled: true
+      conf: /etc/openvpn/server/server.conf
+      service: openvpn-server@server
+      port: 1194
+      primary: true
+    tcp:
+      enabled: false
+      conf: /etc/openvpn/server/server-tcp.conf
+      service: openvpn-server@server-tcp
+      port: 443
+      primary: false
 
 # Management interface: unix socket (angristan default) or TCP.
 openvpn_management:

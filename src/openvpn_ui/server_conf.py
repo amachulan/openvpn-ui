@@ -414,43 +414,118 @@ def sync_client_template(
     if not template_path.is_file():
         return False
     text = template_path.read_text(encoding="utf-8", errors="replace")
+    new_text = apply_client_endpoint_overrides(text, proto=proto, port=port)
+    if new_text == text:
+        return False
+    template_path.write_text(new_text, encoding="utf-8")
+    return True
+
+
+def apply_client_endpoint_overrides(
+    text: str,
+    *,
+    proto: str | None = None,
+    port: int | None = None,
+) -> str:
+    """Return client template / profile header with proto/remote overridden."""
     lines = text.splitlines()
-    changed = False
     out: list[str] = []
     for line in lines:
         stripped = line.strip()
         if proto and stripped.lower().startswith("proto "):
-            new_line = f"proto {proto}"
-            if new_line != stripped:
-                changed = True
-            out.append(new_line)
+            out.append(f"proto {proto}")
             continue
         m = REMOTE_RE.match(stripped)
         if m and port is not None:
             host = m.group(1)
-            new_line = f"remote {host} {port}"
-            if new_line != stripped:
-                changed = True
-            out.append(new_line)
+            out.append(f"remote {host} {port}")
             continue
         out.append(line)
-    if not changed:
-        return False
     ending = "\n" if text.endswith("\n") else ""
-    template_path.write_text("\n".join(out) + ending, encoding="utf-8")
-    return True
+    return "\n".join(out) + ending
 
 
-def backup_file(src: Path, backup_dir: Path, *, keep: int = BACKUP_KEEP) -> Path:
+def clone_instance_conf(
+    src_text: str,
+    *,
+    instance_id: str,
+    proto: str,
+    port: int,
+) -> str:
+    """Clone a server.conf for a second instance (same PKI/subnet, distinct runtime paths)."""
+    iid = instance_id.strip().lower()
+    if iid not in {"udp", "tcp"}:
+        raise ServerConfError(f"invalid instance id: {instance_id}")
+    lines = src_text.splitlines()
+    out: list[str] = []
+    for line in lines:
+        if _is_comment_or_blank(line):
+            out.append(line)
+            continue
+        key, rest = _directive(line)
+        if key == "port":
+            out.append(f"port {int(port)}")
+            continue
+        if key == "proto":
+            out.append(f"proto {proto}")
+            continue
+        if key == "status":
+            # Keep verb args after path if any.
+            parts = rest.split()
+            suffix = " " + " ".join(parts[1:]) if len(parts) > 1 else ""
+            out.append(f"status /var/log/openvpn/status-{iid}.log{suffix}")
+            continue
+        if key == "management":
+            parts = rest.split()
+            if parts and (parts[0].startswith("/") or parts[0].endswith(".sock")):
+                out.append(
+                    f"management /var/run/openvpn-server/server-{iid}.sock unix"
+                )
+            elif len(parts) >= 2:
+                # TCP management: bump port slightly by family default offset.
+                try:
+                    host = parts[0]
+                    mport = int(parts[1]) + (1 if iid == "tcp" else 2)
+                    out.append(f"management {host} {mport}")
+                except ValueError:
+                    out.append(line)
+            else:
+                out.append(line)
+            continue
+        if key == "ifconfig-pool-persist":
+            parts = rest.split()
+            name = parts[0] if parts else "ipp.txt"
+            stem = Path(name).name
+            if "." in stem:
+                base, ext = stem.rsplit(".", 1)
+                new_name = f"{base}-{iid}.{ext}"
+            else:
+                new_name = f"{stem}-{iid}"
+            rest_tail = " " + " ".join(parts[1:]) if len(parts) > 1 else ""
+            out.append(f"ifconfig-pool-persist {new_name}{rest_tail}")
+            continue
+        out.append(line)
+    text = "\n".join(out)
+    return text + ("\n" if src_text.endswith("\n") or src_text == "" else "")
+
+
+def backup_file(
+    src: Path,
+    backup_dir: Path,
+    *,
+    keep: int = BACKUP_KEEP,
+    prefix: str | None = None,
+) -> Path:
     if not src.is_file():
         raise ServerConfError(f"cannot backup missing file: {src}")
     backup_dir.mkdir(parents=True, exist_ok=True)
-    dest = backup_dir / f"server.conf.{_utc_stamp()}"
+    base = prefix or src.name
+    dest = backup_dir / f"{base}.{_utc_stamp()}"
     if dest.exists():
-        dest = backup_dir / f"server.conf.{_utc_stamp()}.{src.stat().st_mtime_ns}"
+        dest = backup_dir / f"{base}.{_utc_stamp()}.{src.stat().st_mtime_ns}"
     shutil.copy2(src, dest)
     backups = sorted(
-        backup_dir.glob("server.conf.*"),
+        backup_dir.glob(f"{base}.*"),
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
@@ -462,15 +537,22 @@ def backup_file(src: Path, backup_dir: Path, *, keep: int = BACKUP_KEEP) -> Path
     return dest
 
 
-def list_backups(backup_dir: Path) -> list[dict[str, Any]]:
+def list_backups(
+    backup_dir: Path, *, prefix: str | None = None
+) -> list[dict[str, Any]]:
     if not backup_dir.is_dir():
         return []
+    pattern = f"{prefix}.*" if prefix else "server*.conf.*"
+    # Also match historical server.conf.* backups when prefix is server.conf
     rows: list[dict[str, Any]] = []
-    for path in sorted(
-        backup_dir.glob("server.conf.*"), key=lambda p: p.name, reverse=True
-    ):
-        if not path.is_file():
+    paths = list(backup_dir.glob(pattern))
+    if prefix == "server.conf":
+        paths.extend(backup_dir.glob("server.conf.*"))
+    seen: set[Path] = set()
+    for path in sorted(paths, key=lambda p: p.name, reverse=True):
+        if path in seen or not path.is_file():
             continue
+        seen.add(path)
         st = path.stat()
         rows.append(
             {
@@ -493,7 +575,7 @@ def restore_backup(backup_dir: Path, backup_id: str, dest: Path) -> Path:
     if not src.is_file():
         raise ServerConfError(f"backup not found: {backup_id}")
     if dest.is_file():
-        backup_file(dest, backup_dir)
+        backup_file(dest, backup_dir, prefix=dest.name)
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dest)
     return dest
@@ -503,7 +585,7 @@ def write_server_conf(path: Path, text: str, backup_dir: Path) -> Path:
     """Backup existing conf and write new text. Returns backup path (or empty Path)."""
     backup: Path | None = None
     if path.is_file():
-        backup = backup_file(path, backup_dir)
+        backup = backup_file(path, backup_dir, prefix=path.name)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")

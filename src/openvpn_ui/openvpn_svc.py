@@ -93,6 +93,22 @@ def restart_service(unit: str) -> dict[str, Any]:
     return {"ok": True, "action": "restart", "status": status}
 
 
+def enable_now(unit: str) -> dict[str, Any]:
+    proc = _systemctl("enable", "--now", unit, timeout=60)
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        raise OpenVpnServiceError(err or f"enable failed ({proc.returncode})")
+    return {"ok": True, "action": "enable", "status": service_status(unit)}
+
+
+def disable_now(unit: str) -> dict[str, Any]:
+    proc = _systemctl("disable", "--now", unit, timeout=60)
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        raise OpenVpnServiceError(err or f"disable failed ({proc.returncode})")
+    return {"ok": True, "action": "disable", "status": service_status(unit)}
+
+
 def reload_service(unit: str) -> dict[str, Any]:
     proc = _systemctl("reload", unit, timeout=60)
     if proc.returncode != 0:

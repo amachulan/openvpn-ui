@@ -189,15 +189,19 @@ def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/v1/clients/{cn}/ovpn")
-    def download_ovpn(cn: str, _: str = Depends(auth)) -> FileResponse:
+    def download_ovpn(
+        cn: str,
+        proto: str | None = Query(None, pattern="^(udp|tcp)$"),
+        _: str = Depends(auth),
+    ) -> FileResponse:
         try:
-            path = service.ovpn_path(cn)
+            path = service.ovpn_path(cn, proto=proto)
         except PkiError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return FileResponse(
             path,
             media_type="application/x-openvpn-profile",
-            filename=f"{cn}.ovpn",
+            filename=path.name,
         )
 
     @app.post("/api/v1/clients/{cn}/deliver")
@@ -266,6 +270,105 @@ def create_app(cfg: dict[str, Any] | None = None) -> FastAPI:
         except ServerConfError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    @app.put("/api/v1/server/instances/{instance_id}")
+    def put_instance(
+        instance_id: str,
+        body: ServerSettingsBody,
+        _: str = Depends(auth),
+    ) -> dict[str, Any]:
+        data = body.model_dump(exclude_unset=True)
+        restart = bool(data.pop("restart", False))
+        try:
+            return service.update_instance(instance_id, data, restart=restart)
+        except (ServerConfError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.get("/api/v1/server/instances/{instance_id}/conf")
+    def get_instance_conf(instance_id: str, _: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.get_instance_conf_raw(instance_id)
+        except (ServerConfError, KeyError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.put("/api/v1/server/instances/{instance_id}/conf")
+    def put_instance_conf(
+        instance_id: str,
+        body: RawConfBody,
+        _: str = Depends(auth),
+    ) -> dict[str, Any]:
+        try:
+            return service.put_instance_conf_raw(
+                instance_id, body.content, restart=body.restart
+            )
+        except (ServerConfError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.post("/api/v1/server/instances/{instance_id}/enable")
+    def enable_instance(instance_id: str, _: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.enable_instance(instance_id)
+        except (ServerConfError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.post("/api/v1/server/instances/{instance_id}/disable")
+    def disable_instance(instance_id: str, _: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.disable_instance(instance_id)
+        except (ServerConfError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    @app.post("/api/v1/server/instances/{instance_id}/restart")
+    def restart_instance(instance_id: str, _: str = Depends(auth)) -> dict[str, Any]:
+        try:
+            return service.restart_instance(instance_id)
+        except (ServerConfError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    @app.get("/api/v1/server/instances/{instance_id}/backups")
+    def list_instance_backups(
+        instance_id: str, _: str = Depends(auth)
+    ) -> list[dict[str, Any]]:
+        try:
+            return service.list_instance_backups(instance_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/v1/server/instances/{instance_id}/backups/{backup_id}/restore")
+    def restore_instance_backup(
+        instance_id: str,
+        backup_id: str,
+        body: RestoreBody | None = None,
+        _: str = Depends(auth),
+    ) -> dict[str, Any]:
+        payload = body or RestoreBody()
+        try:
+            return service.restore_instance_backup(
+                instance_id, backup_id, restart=payload.restart
+            )
+        except (ServerConfError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenVpnServiceError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Legacy primary-instance aliases
     @app.put("/api/v1/server")
     def put_server(body: ServerSettingsBody, _: str = Depends(auth)) -> dict[str, Any]:
         data = body.model_dump(exclude_unset=True)

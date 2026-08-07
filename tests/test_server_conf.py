@@ -1,8 +1,10 @@
 from pathlib import Path
 
 from openvpn_ui.server_conf import (
+    apply_client_endpoint_overrides,
     apply_settings_patch,
     backup_file,
+    clone_instance_conf,
     list_backups,
     parse_server_conf,
     restore_backup,
@@ -81,10 +83,10 @@ def test_backup_and_restore(tmp_path: Path):
     conf = tmp_path / "server.conf"
     conf.write_text(SAMPLE, encoding="utf-8")
     backup_dir = tmp_path / "backups"
-    bak = backup_file(conf, backup_dir)
+    bak = backup_file(conf, backup_dir, prefix="server.conf")
     assert bak.is_file()
     conf.write_text("port 1\n", encoding="utf-8")
-    rows = list_backups(backup_dir)
+    rows = list_backups(backup_dir, prefix="server.conf")
     assert rows
     restore_backup(backup_dir, bak.name, conf)
     assert "port 1194" in conf.read_text(encoding="utf-8")
@@ -107,3 +109,25 @@ def test_sync_client_template(tmp_path: Path):
     assert "proto tcp" in text
     assert "remote vpn.example.com 443" in text
     assert sync_client_template(tpl, port=443, proto="tcp") is False
+
+
+def test_clone_instance_conf_tcp():
+    sample = SAMPLE + "status /var/log/openvpn/status.log\n"
+    sample += "management /var/run/openvpn-server/server.sock unix\n"
+    sample += "ifconfig-pool-persist ipp.txt\n"
+    text = clone_instance_conf(sample, instance_id="tcp", proto="tcp", port=443)
+    s = parse_server_conf(text)
+    assert s.port == 443
+    assert s.proto == "tcp"
+    assert "ca ca.crt" in text
+    assert "server 10.8.0.0" in text
+    assert "status /var/log/openvpn/status-tcp.log" in text
+    assert "management /var/run/openvpn-server/server-tcp.sock unix" in text
+    assert "ifconfig-pool-persist ipp-tcp.txt" in text
+
+
+def test_apply_client_endpoint_overrides():
+    text = "client\nproto udp\nremote vpn.example.com 1194\ndev tun\n"
+    out = apply_client_endpoint_overrides(text, proto="tcp", port=443)
+    assert "proto tcp" in out
+    assert "remote vpn.example.com 443" in out

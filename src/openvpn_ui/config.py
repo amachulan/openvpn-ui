@@ -25,8 +25,9 @@ def default_config() -> dict[str, Any]:
             "server_conf_backup_dir": "/var/lib/openvpn-ui/backups",
         },
         "openvpn": {
-            # Override if not angristan default openvpn-server@server.
+            # Override primary unit if not angristan default openvpn-server@server.
             "service": "",
+            "instances": {},
         },
         "openvpn_management": {
             "timeout_seconds": 15,
