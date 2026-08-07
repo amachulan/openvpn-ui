@@ -132,8 +132,24 @@ button {
   cursor: pointer;
 }
 
+.theme-toggle,
+.lang-toggle {
+  min-width: 2.5rem;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  line-height: 1;
+  font-size: 1.1rem;
+}
+
+.lang-toggle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 button.secondary,
-button.theme-toggle {
+button.theme-toggle,
+button.lang-toggle {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
@@ -147,14 +163,6 @@ button.danger {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.theme-toggle {
-  min-width: 2.5rem;
-  padding-left: 0.65rem;
-  padding-right: 0.65rem;
-  line-height: 1;
-  font-size: 1.1rem;
 }
 
 .tabs {
