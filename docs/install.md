@@ -29,12 +29,32 @@ git clone https://github.com/amachulan/vpnctl.git /opt/vpnctl
 cd /opt/vpnctl
 python3 -m venv .venv
 source .venv/bin/activate
-pip install .
+pip install --default-timeout=120 .
 sudo ln -sfn /opt/vpnctl/.venv/bin/vpnctl /usr/local/bin/vpnctl
 sudo vpnctl install --systemd
 sudo systemctl daemon-reload
 sudo systemctl enable --now vpnctl
 ```
+
+### PyPI timeouts
+
+Some VPS providers have slow or filtered access to `pypi.org`. Symptoms: `ReadTimeoutError` during `pip install`.
+
+```bash
+# longer timeout / retries (install.sh does this by default now)
+export PIP_DEFAULT_TIMEOUT=180
+sudo -E bash scripts/install.sh
+
+# or finish a half-installed clone:
+cd /opt/vpnctl
+source .venv/bin/activate
+pip install --default-timeout=180 .
+sudo ln -sfn /opt/vpnctl/.venv/bin/vpnctl /usr/local/bin/vpnctl
+sudo vpnctl install --systemd
+sudo systemctl daemon-reload && sudo systemctl enable --now vpnctl
+```
+
+Check outbound HTTPS: `curl -I https://pypi.org/simple/pip/`.
 
 ## Configure
 
